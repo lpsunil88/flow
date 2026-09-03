@@ -1,0 +1,6 @@
+{
+  "name": "Business Billing Suite",
+  "description": "Comprehensive billing platform to manage invoices, proformas, delivery challans, client databases, automated PDF generation, Google Drive synchronization, and real-time financial reporting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
