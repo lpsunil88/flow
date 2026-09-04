@@ -8,7 +8,6 @@ import {
   LayoutTemplate, FileText, Truck, Receipt, CheckSquare, Layers, Columns, Grid
 } from 'lucide-react';
 import { saveBillingDataToDrive, loadBillingDataFromDrive } from '../services/googleDrive';
-import { fetchGstDetails, GstDetails } from '../services/gstService';
 import { DOCUMENT_DESIGNS, DocumentDesign, INVOICE_THEMES, PROFORMA_THEMES, CHALLAN_THEMES } from '../services/themeEngine';
 import { CreateStaffModal } from './CreateStaffModal';
 import { DesignPreviewModal } from './DesignPreviewModal';
@@ -67,9 +66,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   // New Company Modal State
   const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
-  const [newCompanyGstInput, setNewCompanyGstInput] = useState('');
-  const [isFetchingGst, setIsFetchingGst] = useState(false);
-  const [gstError, setGstError] = useState<string | null>(null);
   const [newCompanyData, setNewCompanyData] = useState<Partial<CompanyProfile>>({
     name: '',
     taxId: '',
@@ -214,37 +210,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setNewCompanyData(prev => ({ ...prev, logoUrl: dataUrl }));
     };
     reader.readAsDataURL(file);
-  };
-
-  // GST Auto-Fetch for New Company Modal
-  const handleFetchGstForNewCompany = async () => {
-    if (!newCompanyGstInput || newCompanyGstInput.trim().length < 15) {
-      setGstError('Please enter a valid 15-digit GSTIN.');
-      return;
-    }
-
-    setIsFetchingGst(true);
-    setGstError(null);
-
-    try {
-      const d = await fetchGstDetails(newCompanyGstInput.trim().toUpperCase());
-      setNewCompanyData(prev => ({
-        ...prev,
-        name: d.tradeName || d.legalName,
-        taxId: d.gstin,
-        address: d.address,
-        city: `${d.city} - ${d.pincode}`,
-        email: prev.email || `accounts@${(d.tradeName || d.legalName).toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
-        bankDetails: {
-          ...prev.bankDetails!,
-          accountName: d.legalName,
-        }
-      }));
-    } catch (err: any) {
-      setGstError(err.message || 'Error communicating with GST registry.');
-    } finally {
-      setIsFetchingGst(false);
-    }
   };
 
   const handleCreateCompanySubmit = (e: React.FormEvent) => {
@@ -759,8 +724,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  setNewCompanyGstInput('');
-                  setGstError(null);
                   setNewCompanyData({
                     name: '',
                     taxId: '',
@@ -1433,7 +1396,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-6 text-xs">
           <div>
             <h3 className="text-sm font-bold text-slate-900">Configured Currencies & Exchange Rates</h3>
-            <p className="text-slate-500 mt-0.5">Rates relative to USD (1.00 base standard) for financial conversion.</p>
+            <p className="text-slate-500 mt-0.5">Rates relative to base currency (INR / ₹) for financial conversion.</p>
           </div>
 
           <div className="overflow-x-auto">
@@ -1443,7 +1406,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <th className="py-2.5 px-4">Code</th>
                   <th className="py-2.5 px-4">Symbol</th>
                   <th className="py-2.5 px-4">Currency Name</th>
-                  <th className="py-2.5 px-4">Exchange Rate (vs USD)</th>
+                  <th className="py-2.5 px-4">Exchange Rate (vs INR)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1825,34 +1788,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
 
             <form onSubmit={handleCreateCompanySubmit} className="space-y-4 pt-4 text-xs">
-              {/* GSTIN Auto-Fetch Section */}
-              <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-2">
-                <label className="block font-bold text-indigo-950 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                  Auto-Fill from GST Number (Optional)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    maxLength={15}
-                    placeholder="e.g. 27AAACR7055N1ZO"
-                    value={newCompanyGstInput}
-                    onChange={(e) => setNewCompanyGstInput(e.target.value.toUpperCase())}
-                    className="flex-1 px-3 py-2 bg-white border border-indigo-200 rounded-lg font-mono uppercase font-semibold text-xs"
-                  />
-                  <button
-                    type="button"
-                    disabled={isFetchingGst || newCompanyGstInput.trim().length < 15}
-                    onClick={handleFetchGstForNewCompany}
-                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold rounded-lg flex items-center gap-1 transition"
-                  >
-                    {isFetchingGst ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                    <span>Fetch Details</span>
-                  </button>
-                </div>
-                {gstError && <p className="text-rose-600 text-[11px]">{gstError}</p>}
-              </div>
-
               {/* Company Logo Section in Modal */}
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Company Logo</label>

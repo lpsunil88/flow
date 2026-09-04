@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { CompanyProfile, CurrencyConfig, Document, StaffUser } from '../types';
 import { formatCurrency } from '../services/pdfGenerator';
 import { 
-  DollarSign, TrendingUp, AlertTriangle, CheckCircle2, FileText, 
+  IndianRupee, TrendingUp, AlertTriangle, CheckCircle2, FileText, 
   Truck, ArrowUpRight, Clock, Calendar, BarChart3, Plus, ArrowRight 
 } from 'lucide-react';
 
@@ -43,9 +43,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Normalize all currency totals to base currency using exchange rates for unified reporting
   const convertToBase = (amount: number, currCode: string) => {
-    const config = currencies.find((c) => c.code === currCode);
-    const rate = config?.exchangeRate || 1.0;
-    return amount / rate;
+    const baseCode = company.defaultCurrency || 'INR';
+    if (currCode === baseCode) return amount;
+    const baseConfig = currencies.find((c) => c.code === baseCode);
+    const currConfig = currencies.find((c) => c.code === currCode);
+    const baseRate = baseConfig?.exchangeRate || 1.0;
+    const currRate = currConfig?.exchangeRate || 1.0;
+    return (amount / currRate) * baseRate;
   };
 
   const totalInvoicedBase = invoices.reduce((acc, d) => acc + convertToBase(d.grandTotal, d.currency), 0);
@@ -176,7 +180,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Invoiced</span>
             <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-              <DollarSign className="w-4 h-4" />
+              <IndianRupee className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
@@ -482,7 +486,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   doc.type === 'invoice' ? 'bg-indigo-50 text-indigo-600' :
                   doc.type === 'proforma' ? 'bg-amber-50 text-amber-600' : 'bg-teal-50 text-teal-600'
                 }`}>
-                  {doc.type === 'invoice' ? <DollarSign className="w-4 h-4" /> :
+                  {doc.type === 'invoice' ? <IndianRupee className="w-4 h-4" /> :
                    doc.type === 'proforma' ? <FileText className="w-4 h-4" /> : <Truck className="w-4 h-4" />}
                 </div>
                 <div>

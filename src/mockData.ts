@@ -1,14 +1,14 @@
 import { Client, CompanyProfile, CurrencyConfig, Document, Item, ProductList, StaffUser } from './types';
 
 export const INITIAL_CURRENCIES: CurrencyConfig[] = [
-  { code: 'USD', symbol: '$', name: 'US Dollar', exchangeRate: 1.0 },
-  { code: 'EUR', symbol: '€', name: 'Euro', exchangeRate: 0.92 },
-  { code: 'GBP', symbol: '£', name: 'British Pound', exchangeRate: 0.78 },
-  { code: 'INR', symbol: '₹', name: 'Indian Rupee', exchangeRate: 83.5 },
-  { code: 'AED', symbol: 'AED', name: 'UAE Dirham', exchangeRate: 3.67 },
-  { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar', exchangeRate: 1.36 },
-  { code: 'AUD', symbol: 'AU$', name: 'Australian Dollar', exchangeRate: 1.52 },
-  { code: 'SGD', symbol: 'SG$', name: 'Singapore Dollar', exchangeRate: 1.34 },
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee', exchangeRate: 1.0 },
+  { code: 'USD', symbol: '$', name: 'US Dollar', exchangeRate: 0.012 },
+  { code: 'EUR', symbol: '€', name: 'Euro', exchangeRate: 0.011 },
+  { code: 'GBP', symbol: '£', name: 'British Pound', exchangeRate: 0.0094 },
+  { code: 'AED', symbol: 'AED', name: 'UAE Dirham', exchangeRate: 0.044 },
+  { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar', exchangeRate: 0.016 },
+  { code: 'AUD', symbol: 'AU$', name: 'Australian Dollar', exchangeRate: 0.018 },
+  { code: 'SGD', symbol: 'SG$', name: 'Singapore Dollar', exchangeRate: 0.016 },
 ];
 
 export const INITIAL_COMPANIES: CompanyProfile[] = [
@@ -31,7 +31,7 @@ export const INITIAL_COMPANIES: CompanyProfile[] = [
       upiId: '',
       qrCodeText: '',
     },
-    defaultCurrency: 'USD',
+    defaultCurrency: 'INR',
     defaultTaxType: 'gst',
     defaultTaxRate: 18,
     isGstInterState: false,

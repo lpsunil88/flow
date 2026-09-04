@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CompanyProfile, CurrencyConfig, Document, PaymentMethod, PaymentRecord } from '../types';
-import { formatCurrency } from '../services/pdfGenerator';
-import { CreditCard, X, DollarSign, Calendar, Hash, FileText } from 'lucide-react';
+import { formatCurrency, getCurrencySymbol } from '../services/pdfGenerator';
+import { CreditCard, X, Calendar, Hash, FileText } from 'lucide-react';
 
 interface RecordPaymentModalProps {
   document: Document;
@@ -81,8 +81,8 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               Payment Amount ({doc.currency})
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm font-semibold">
-                $
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 text-sm font-bold">
+                {getCurrencySymbol(doc.currency || 'INR', currencies)}
               </div>
               <input
                 type="number"

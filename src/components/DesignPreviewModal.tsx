@@ -8,7 +8,8 @@ import {
 
 const formatCurrency = (amount: number, code: string = 'INR') => {
   const sym = code === 'INR' ? '₹' : code === 'USD' ? '$' : code === 'EUR' ? '€' : `${code} `;
-  return `${sym} ${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const locale = code === 'INR' ? 'en-IN' : 'en-US';
+  return `${sym} ${Number(amount || 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 interface DesignPreviewModalProps {

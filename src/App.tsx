@@ -60,7 +60,12 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((c: CompanyProfile) => ({
+            ...c,
+            defaultCurrency: c.defaultCurrency === 'USD' ? 'INR' : (c.defaultCurrency || 'INR'),
+          }));
+        }
       } catch (e) {
         console.error('Failed to parse companies from storage', e);
       }
@@ -79,12 +84,38 @@ export default function App() {
   // Documents & Clients
   const [documents, setDocuments] = useState<Document[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.DOCS);
-    return saved ? JSON.parse(saved) : INITIAL_DOCUMENTS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((d: Document) => ({
+            ...d,
+            currency: d.currency === 'USD' ? 'INR' : (d.currency || 'INR'),
+          }));
+        }
+      } catch (e) {
+        console.error('Failed to parse documents from storage', e);
+      }
+    }
+    return INITIAL_DOCUMENTS;
   });
 
   const [clients, setClients] = useState<Client[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.CLIENTS);
-    return saved ? JSON.parse(saved) : INITIAL_CLIENTS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((cl: Client) => ({
+            ...cl,
+            currency: cl.currency === 'USD' ? 'INR' : (cl.currency || 'INR'),
+          }));
+        }
+      } catch (e) {
+        console.error('Failed to parse clients from storage', e);
+      }
+    }
+    return INITIAL_CLIENTS;
   });
 
   // Items & Multiple Product Lists
@@ -95,12 +126,42 @@ export default function App() {
 
   const [productLists, setProductLists] = useState<ProductList[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.PRODUCT_LISTS);
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCT_LISTS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((pl: ProductList) => ({
+            ...pl,
+            currency: pl.currency === 'USD' ? 'INR' : (pl.currency || 'INR'),
+          }));
+        }
+      } catch (e) {
+        console.error('Failed to parse product lists from storage', e);
+      }
+    }
+    return INITIAL_PRODUCT_LISTS;
   });
 
   const [currencies, setCurrencies] = useState<CurrencyConfig[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.CURRENCIES);
-    return saved ? JSON.parse(saved) : INITIAL_CURRENCIES;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const inr = parsed.find((c: CurrencyConfig) => c.code === 'INR') || {
+            code: 'INR',
+            symbol: '₹',
+            name: 'Indian Rupee',
+            exchangeRate: 1.0,
+          };
+          const others = parsed.filter((c: CurrencyConfig) => c.code !== 'INR');
+          return [inr, ...others];
+        }
+      } catch (e) {
+        console.error('Failed to parse currencies from storage', e);
+      }
+    }
+    return INITIAL_CURRENCIES;
   });
 
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>(() => {

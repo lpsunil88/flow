@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Item, ProductList, StaffUser, CurrencyConfig } from '../types';
 import { 
   Package, Plus, Search, Filter, Edit2, Trash2, Download, 
-  Layers, Check, AlertCircle, ArrowUpDown, Tag, DollarSign, 
+  Layers, Check, AlertCircle, ArrowUpDown, Tag, IndianRupee, 
   Boxes, Star, ListFilter, CheckSquare, Square, FolderPlus,
   Info
 } from 'lucide-react';
@@ -66,7 +66,7 @@ export function ItemManagement({
   const [listFormData, setListFormData] = useState<Partial<ProductList>>({
     name: '',
     description: '',
-    currency: currentCurrency || 'USD',
+    currency: currentCurrency || 'INR',
     isDefault: false,
     itemIds: [],
   });
@@ -186,7 +186,7 @@ export function ItemManagement({
       id: `plist-${Date.now()}`,
       name: '',
       description: '',
-      currency: currentCurrency || 'USD',
+      currency: currentCurrency || 'INR',
       isDefault: productLists.length === 0,
       itemIds: items.slice(0, 5).map(i => i.id),
       companyId: activeCompanyId,
@@ -226,7 +226,7 @@ export function ItemManagement({
       id: listId,
       name: listFormData.name!.trim(),
       description: listFormData.description?.trim() || '',
-      currency: listFormData.currency || currentCurrency || 'USD',
+      currency: listFormData.currency || currentCurrency || 'INR',
       isDefault: Boolean(listFormData.isDefault),
       companyId: activeCompanyId,
       itemIds: listFormData.itemIds || [],
@@ -407,7 +407,7 @@ export function ItemManagement({
             <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
               <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
                 <span>Avg. Unit Price</span>
-                <DollarSign className="w-4 h-4 text-blue-500" />
+                <IndianRupee className="w-4 h-4 text-indigo-600" />
               </div>
               <p className="text-2xl font-bold text-slate-900 mt-1">
                 {formatCurrency(

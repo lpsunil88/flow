@@ -3,13 +3,15 @@ import { CompanyProfile, CurrencyConfig, Document, InvoiceTemplate } from '../ty
 import { getThemeForDocument, getDesignForDocument } from './themeEngine';
 
 export function getCurrencySymbol(code: string, currencies: CurrencyConfig[]): string {
-  const found = currencies.find((c) => c.code === code);
-  return found ? found.symbol : code;
+  const found = currencies?.find((c) => c.code === code);
+  return found ? found.symbol : code === 'INR' ? '₹' : code;
 }
 
-export function formatCurrency(amount: number, currencyCode: string, currencies: CurrencyConfig[]): string {
-  const symbol = getCurrencySymbol(currencyCode, currencies);
-  return `${symbol} ${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export function formatCurrency(amount: number, currencyCode: string = 'INR', currencies: CurrencyConfig[] = []): string {
+  const code = currencyCode || 'INR';
+  const symbol = getCurrencySymbol(code, currencies);
+  const locale = code === 'INR' ? 'en-IN' : 'en-US';
+  return `${symbol} ${Number(amount || 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function generateDocumentPdf(doc: Document, company: CompanyProfile, currencies: CurrencyConfig[]): jsPDF {

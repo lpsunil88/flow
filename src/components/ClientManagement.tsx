@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { Client, CurrencyConfig, Document, StaffUser } from '../types';
 import { formatCurrency } from '../services/pdfGenerator';
-import { fetchGstDetails } from '../services/gstService';
 import { 
   Plus, Search, Building2, Mail, Phone, MapPin, FileText, 
-  ExternalLink, Edit, Trash2, X, Download, UserCheck, ShieldAlert,
-  Sparkles, Loader2 
+  ExternalLink, Edit, Trash2, X, Download, UserCheck, ShieldAlert
 } from 'lucide-react';
 
 interface ClientManagementProps {
@@ -33,41 +31,6 @@ export const ClientManagement: React.FC<ClientManagementProps> = ({
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [selectedClientForHistory, setSelectedClientForHistory] = useState<Client | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isFetchingGst, setIsFetchingGst] = useState(false);
-  const [gstFeedback, setGstFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  const handleFetchGstInModal = async () => {
-    if (!editingClient || !editingClient.taxId?.trim()) return;
-    setIsFetchingGst(true);
-    setGstFeedback(null);
-
-    try {
-      const d = await fetchGstDetails(editingClient.taxId.trim());
-      setIsFetchingGst(false);
-
-      setEditingClient({
-        ...editingClient,
-        company: d.legalName,
-        name: editingClient.name || d.tradeName || d.legalName,
-        taxId: d.gstin,
-        address: `${d.address}, ${d.city}, ${d.stateName} - ${d.pincode}`,
-        currency: 'INR',
-        notes: editingClient.notes 
-          ? `${editingClient.notes} | Auto-fetched from GSTIN (${d.taxpayerType}, Status: ${d.status})` 
-          : `Auto-fetched from GSTIN ${d.gstin} (${d.taxpayerType}, Status: ${d.status})`,
-      });
-      setGstFeedback({
-        type: 'success',
-        message: `Successfully verified and populated: ${d.tradeName || d.legalName} (${d.stateName})`,
-      });
-    } catch (err: any) {
-      setIsFetchingGst(false);
-      setGstFeedback({
-        type: 'error',
-        message: err.message || 'Could not verify GSTIN details. Please check the 15-character number.',
-      });
-    }
-  };
 
   // Filter clients
   const filteredClients = clients.filter((c) => {
@@ -89,7 +52,7 @@ export const ClientManagement: React.FC<ClientManagementProps> = ({
       phone: '',
       address: '',
       taxId: '',
-      currency: 'USD',
+      currency: 'INR',
       notes: '',
       totalBilled: 0,
       outstandingBalance: 0,
@@ -383,54 +346,16 @@ export const ClientManagement: React.FC<ClientManagementProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-semibold text-slate-700">GSTIN / Tax ID</label>
-                    <button
-                      type="button"
-                      disabled={isFetchingGst || !editingClient.taxId?.trim()}
-                      onClick={handleFetchGstInModal}
-                      className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1 disabled:opacity-40"
-                    >
-                      {isFetchingGst ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3 text-amber-500" />}
-                      <span>Auto-Fetch Details</span>
-                    </button>
-                  </div>
+                  <label className="block font-semibold text-slate-700 mb-1">GSTIN / Tax ID</label>
                   <input
                     type="text"
                     placeholder="e.g. 27AAACR7055N1ZO"
                     value={editingClient.taxId}
                     onChange={(e) => {
                       setEditingClient({ ...editingClient, taxId: e.target.value.toUpperCase() });
-                      if (gstFeedback) setGstFeedback(null);
                     }}
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md font-mono uppercase focus:ring-2 focus:ring-indigo-500"
                   />
-                  <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-500">
-                    <span>Try sample:</span>
-                    <button
-                      type="button"
-                      onClick={() => setEditingClient({ ...editingClient, taxId: '27AAACR7055N1ZO' })}
-                      className="underline text-indigo-600 hover:text-indigo-800 font-mono"
-                    >
-                      Reliance
-                    </button>
-                    <span>•</span>
-                    <button
-                      type="button"
-                      onClick={() => setEditingClient({ ...editingClient, taxId: '27AAACT2727Q1ZW' })}
-                      className="underline text-indigo-600 hover:text-indigo-800 font-mono"
-                    >
-                      Tata
-                    </button>
-                    <span>•</span>
-                    <button
-                      type="button"
-                      onClick={() => setEditingClient({ ...editingClient, taxId: '29AABCI0249K1Z4' })}
-                      className="underline text-indigo-600 hover:text-indigo-800 font-mono"
-                    >
-                      Infosys
-                    </button>
-                  </div>
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Billing Currency</label>
@@ -447,16 +372,6 @@ export const ClientManagement: React.FC<ClientManagementProps> = ({
                   </select>
                 </div>
               </div>
-
-              {gstFeedback && (
-                <div className={`p-2.5 rounded-lg border text-xs ${
-                  gstFeedback.type === 'success'
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                    : 'bg-rose-50 border-rose-200 text-rose-700'
-                }`}>
-                  {gstFeedback.message}
-                </div>
-              )}
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Billing & Shipping Address</label>
