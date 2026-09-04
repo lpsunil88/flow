@@ -91,6 +91,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Recent Transactions
   const recentDocs = [...documents].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
 
+  // Dynamic monthly statistics for the last 4 months
+  const monthlyStats = React.useMemo(() => {
+    const result: { label: string; invoiced: number; collected: number }[] = [];
+    const now = new Date();
+    for (let i = 3; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const monthKey = `${year}-${month}`;
+      const label = d.toLocaleString('default', { month: 'short' }) + (i === 0 ? ' (Current)' : '');
+
+      const monthInvoices = invoices.filter((inv) => inv.date && inv.date.startsWith(monthKey));
+      const invTotal = monthInvoices.reduce((acc, inv) => acc + convertToBase(inv.grandTotal, inv.currency), 0);
+      const colTotal = monthInvoices.reduce((acc, inv) => acc + convertToBase(inv.paidAmount, inv.currency), 0);
+      result.push({ label, invoiced: invTotal, collected: colTotal });
+    }
+    return result;
+  }, [invoices, currencies]);
+
+  const maxMonthlyVal = Math.max(...monthlyStats.map((m) => Math.max(m.invoiced, m.collected)), 1);
+
+  const realizationRate = totalInvoicedBase > 0 
+    ? Math.min(100, Math.round((totalPaidBase / totalInvoicedBase) * 100))
+    : 0;
+
+  const paidInvoices = invoices.filter((d) => d.status === 'paid' && d.payments && d.payments.length > 0);
+  const avgCycleDays = paidInvoices.length > 0
+    ? (
+        paidInvoices.reduce((acc, d) => {
+          const start = new Date(d.date).getTime();
+          const end = new Date(d.payments[d.payments.length - 1].date).getTime();
+          return acc + Math.max(0, Math.round((end - start) / (1000 * 60 * 60 * 24)));
+        }, 0) / paidInvoices.length
+      ).toFixed(1)
+    : null;
+
   return (
     <div className="space-y-6">
       {/* Top Banner & Quick Controls */}
@@ -130,30 +166,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               30 Days
             </button>
           </div>
-
-          {currentUser.role !== 'auditor' && (
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => onOpenCreate('invoice')}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Invoice</span>
-              </button>
-              <button
-                onClick={() => onOpenCreate('proforma')}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg transition-colors"
-              >
-                <span>+ Proforma</span>
-              </button>
-              <button
-                onClick={() => onOpenCreate('challan')}
-                className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-lg transition-colors"
-              >
-                <span>+ Challan</span>
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -372,48 +384,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Simple Clean Bar Graph Representation */}
-          <div className="h-44 flex items-end gap-6 pt-6 pb-2 px-4 border-b border-slate-200">
-            {/* June */}
-            <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-              <div className="w-full flex items-end justify-center gap-1.5 h-full">
-                <div className="w-1/2 bg-indigo-200 rounded-t h-[65%]" title="Jun Invoiced"></div>
-                <div className="w-1/2 bg-emerald-400 rounded-t h-[60%]" title="Jun Collected"></div>
-              </div>
-              <span className="text-[11px] text-slate-500 font-medium">Jun</span>
+          {/* Dynamic Clean Bar Graph Representation */}
+          {invoices.length === 0 ? (
+            <div className="h-44 flex flex-col items-center justify-center text-center p-4 border-b border-slate-200 text-slate-400">
+              <BarChart3 className="w-8 h-8 text-slate-300 mb-2" />
+              <p className="text-xs font-semibold text-slate-600">No invoice records yet</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 max-w-xs">
+                Monthly revenue and collection metrics will appear automatically as you issue invoices and record settlements.
+              </p>
             </div>
-
-            {/* July */}
-            <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-              <div className="w-full flex items-end justify-center gap-1.5 h-full">
-                <div className="w-1/2 bg-indigo-300 rounded-t h-[80%]" title="Jul Invoiced"></div>
-                <div className="w-1/2 bg-emerald-500 rounded-t h-[75%]" title="Jul Collected"></div>
-              </div>
-              <span className="text-[11px] text-slate-500 font-medium">Jul</span>
+          ) : (
+            <div className="h-44 flex items-end gap-6 pt-6 pb-2 px-4 border-b border-slate-200">
+              {monthlyStats.map((m, idx) => {
+                const invPct = Math.round((m.invoiced / maxMonthlyVal) * 100);
+                const colPct = Math.round((m.collected / maxMonthlyVal) * 100);
+                return (
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+                    <div className="w-full flex items-end justify-center gap-1.5 h-full">
+                      <div
+                        className="w-1/2 bg-indigo-600 rounded-t min-h-[4px] transition-all"
+                        style={{ height: `${Math.max(4, invPct)}%` }}
+                        title={`${m.label} Invoiced: ${formatCurrency(m.invoiced, company.defaultCurrency, currencies)}`}
+                      />
+                      <div
+                        className="w-1/2 bg-emerald-500 rounded-t min-h-[4px] transition-all"
+                        style={{ height: `${Math.max(4, colPct)}%` }}
+                        title={`${m.label} Collected: ${formatCurrency(m.collected, company.defaultCurrency, currencies)}`}
+                      />
+                    </div>
+                    <span className={`text-[11px] font-medium truncate max-w-[70px] ${idx === 3 ? 'text-slate-900 font-bold' : 'text-slate-500'}`}>
+                      {m.label}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-
-            {/* August */}
-            <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-              <div className="w-full flex items-end justify-center gap-1.5 h-full">
-                <div className="w-1/2 bg-indigo-600 rounded-t h-[95%]" title="Aug Invoiced"></div>
-                <div className="w-1/2 bg-emerald-600 rounded-t h-[70%]" title="Aug Collected"></div>
-              </div>
-              <span className="text-[11px] text-slate-900 font-bold">Aug (Current)</span>
-            </div>
-
-            {/* September (Projected) */}
-            <div className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-              <div className="w-full flex items-end justify-center gap-1.5 h-full">
-                <div className="w-1/2 bg-indigo-100 border border-dashed border-indigo-400 rounded-t h-[85%]" title="Sep Pipeline"></div>
-                <div className="w-1/2 bg-emerald-100 border border-dashed border-emerald-400 rounded-t h-[40%]" title="Sep Expected"></div>
-              </div>
-              <span className="text-[11px] text-slate-400">Sep (Est.)</span>
-            </div>
-          </div>
+          )}
 
           <div className="pt-3 flex flex-wrap items-center justify-between text-xs text-slate-600">
-            <div>Average Payment Cycle: <span className="font-semibold text-slate-900">14.2 Days</span></div>
-            <div>Realization Rate: <span className="font-semibold text-emerald-600">86.4%</span></div>
+            <div>Average Payment Cycle: <span className="font-semibold text-slate-900">{avgCycleDays ? `${avgCycleDays} Days` : 'N/A (No closed cycles)'}</span></div>
+            <div>Realization Rate: <span className="font-semibold text-emerald-600">{realizationRate}%</span></div>
           </div>
         </div>
 
@@ -436,8 +446,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
         </div>
 
-        <div className="divide-y divide-slate-100 text-xs">
-          {recentDocs.map((doc) => (
+        {recentDocs.length === 0 ? (
+          <div className="p-10 text-center text-slate-400">
+            <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-slate-700">No transaction records found</p>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              Create and issue your first invoice, proforma estimate, or delivery challan to track accounts.
+            </p>
+            {currentUser.role !== 'auditor' && (
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <button
+                  onClick={() => onOpenCreate('invoice')}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition"
+                >
+                  + Create Invoice
+                </button>
+                <button
+                  onClick={() => onOpenCreate('proforma')}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition"
+                >
+                  + Proforma
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100 text-xs">
+            {recentDocs.map((doc) => (
             <div
               key={doc.id}
               className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
@@ -488,6 +523,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           ))}
         </div>
+        )}
       </div>
 
     </div>

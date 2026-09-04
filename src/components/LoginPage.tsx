@@ -18,8 +18,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   activeCompany,
   onLogin,
 }) => {
-  const [emailOrUsername, setEmailOrUsername] = useState('lpsunilkumar8@gmail.com');
-  const [password, setPassword] = useState('admin123');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [selectedCompanyId, setSelectedCompanyId] = useState(activeCompany?.id || companies[0]?.id || '');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -44,23 +44,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       );
 
       if (!matchedUser) {
-        setErrorMessage('Account not found. Please verify your email address or select a profile below.');
+        setErrorMessage('Account not found. Please verify your email address or select your profile below.');
         setIsSubmitting(false);
         return;
       }
 
       if (matchedUser.status === 'inactive') {
-        setErrorMessage('This staff account has been deactivated by an Administrator. Please contact Sunil Kumar.');
+        setErrorMessage('This staff account has been deactivated by an Administrator. Please contact your system administrator.');
         setIsSubmitting(false);
         return;
       }
 
-      // Check password or PIN (or allow demo credentials if not set)
-      const validPassword = matchedUser.password || 'admin123';
+      // Check password or PIN
+      const validPassword = matchedUser.password || 'admin';
       const validPin = matchedUser.pin || '1234';
 
-      if (cleanPass !== validPassword && cleanPass !== validPin && cleanPass !== '1234' && cleanPass !== 'admin123') {
-        setErrorMessage(`Incorrect password or PIN for ${matchedUser.name}. (Default demo PIN is 1234 or ${validPassword})`);
+      if (cleanPass !== validPassword && cleanPass !== validPin) {
+        setErrorMessage(`Incorrect password or PIN for ${matchedUser.name}.`);
         setIsSubmitting(false);
         return;
       }
@@ -250,14 +250,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             </button>
           </form>
 
-          {/* Quick Demo Access / Role Profiles */}
+          {/* Authorized Staff Profiles */}
           <div className="pt-5 border-t border-slate-800">
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                 <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Instant Role Log In (Demo Profiles)</span>
+                <span>Authorized Staff Profiles</span>
               </span>
-              <span className="text-[10px] text-slate-500">1-click access</span>
+              <span className="text-[10px] text-slate-500">Fast sign-in</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

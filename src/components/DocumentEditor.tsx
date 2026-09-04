@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Client, CompanyProfile, CurrencyConfig, Document, DocumentType, LineItem, StaffUser, Item, ProductList } from '../types';
+import { Client, CompanyProfile, CurrencyConfig, Document, DocumentType, LineItem, StaffUser, Item, ProductList, InvoiceTemplate } from '../types';
 import { formatCurrency } from '../services/pdfGenerator';
-import { INVOICE_THEMES, PROFORMA_THEMES, CHALLAN_THEMES, getThemeForDocument } from '../services/themeEngine';
+import { DOCUMENT_DESIGNS, DocumentDesign, getDesignForDocument } from '../services/themeEngine';
 import { fetchGstDetails, GstDetails } from '../services/gstService';
 import { 
   Plus, Trash2, ArrowLeft, Save, CloudUpload, FileText, Truck, Receipt, Check, 
-  Package, Palette, Search, Sparkles, Loader2, X, Building2, ListFilter 
+  Package, Palette, Search, Sparkles, Loader2, X, Building2, ListFilter, ShieldCheck 
 } from 'lucide-react';
 
 interface DocumentEditorProps {
@@ -62,31 +62,44 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   const [notes, setNotes] = useState(initialDocument?.notes || 'Thank you for your valued business.');
   const [terms, setTerms] = useState(initialDocument?.terms || company.terms);
 
-  // Document theme selection
-  const defaultThemeForType =
+  // Visual Template Style Selection ('Modern' | 'Classic' | 'Minimal')
+  const initialInvoiceTemplate: InvoiceTemplate =
+    initialDocument?.invoiceTemplate ||
+    initialDocument?.template ||
+    (initialDocument?.designId === 'classic-corporate' || initialDocument?.designId === 'tender-formal'
+      ? 'Classic'
+      : initialDocument?.designId === 'modern-minimal' || initialDocument?.designId === 'compact-grid'
+      ? 'Minimal'
+      : company.defaultInvoiceTemplate || 'Modern');
+
+  const [invoiceTemplate] = useState<InvoiceTemplate>(initialInvoiceTemplate);
+
+  // Document Design Selection
+  const defaultDesignForType =
     docType === 'invoice'
-      ? company.invoiceTheme || 'theme-indigo'
+      ? (initialInvoiceTemplate === 'Classic' ? 'classic-corporate' : initialInvoiceTemplate === 'Minimal' ? 'modern-minimal' : company.defaultInvoiceDesign || company.invoiceTheme || 'executive-split')
       : docType === 'proforma'
-      ? company.proformaTheme || 'theme-amber'
-      : company.challanTheme || 'theme-teal';
+      ? company.defaultProformaDesign || company.proformaTheme || 'design-modern-minimal'
+      : company.defaultChallanDesign || company.challanTheme || 'design-logistics-dispatch';
 
-  const [themeId, setThemeId] = useState<string>(initialDocument?.theme || defaultThemeForType);
+  const [designId, setDesignId] = useState<string>(
+    initialDocument?.designId || initialDocument?.theme || defaultDesignForType
+  );
 
-  // Update themeId when docType changes if it wasn't manually customized
+  // Update designId when docType changes if it wasn't manually customized
   useEffect(() => {
-    if (!initialDocument?.theme) {
-      if (docType === 'invoice') setThemeId(company.invoiceTheme || 'theme-indigo');
-      else if (docType === 'proforma') setThemeId(company.proformaTheme || 'theme-amber');
-      else setThemeId(company.challanTheme || 'theme-teal');
+    if (!initialDocument?.designId && !initialDocument?.theme) {
+      if (docType === 'invoice') {
+        setDesignId(company.defaultInvoiceDesign || company.invoiceTheme || 'design-classic-corporate');
+      } else if (docType === 'proforma') {
+        setDesignId(company.defaultProformaDesign || company.proformaTheme || 'design-modern-minimal');
+      } else {
+        setDesignId(company.defaultChallanDesign || company.challanTheme || 'design-logistics-dispatch');
+      }
     }
   }, [docType, company]);
 
-  const availableThemes =
-    docType === 'invoice'
-      ? INVOICE_THEMES
-      : docType === 'proforma'
-      ? PROFORMA_THEMES
-      : CHALLAN_THEMES;
+  const currentDesign = getDesignForDocument(docType, designId);
 
   // Challan details state
   const [vehicleNo, setVehicleNo] = useState(initialDocument?.challanDetails?.vehicleNo || '');
@@ -251,7 +264,10 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
     const doc: Document = {
       id: initialDocument?.id || `doc-${Date.now()}`,
       companyId: company.id,
-      theme: themeId,
+      designId: designId,
+      theme: currentDesign.theme.id,
+      invoiceTemplate: invoiceTemplate,
+      template: invoiceTemplate,
       type: docType,
       documentNumber: docNumber.trim(),
       date,
@@ -477,39 +493,6 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
               onChange={(e) => setDueDate(e.target.value)}
               className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500"
             />
-          </div>
-        </div>
-
-        {/* Visual Document Theme Selection */}
-        <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 text-xs">
-          <div className="flex items-center gap-2 mb-2">
-            <Palette className="w-4 h-4 text-indigo-600" />
-            <span className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
-              {docType === 'invoice' ? 'Invoice Theme' : docType === 'proforma' ? 'Proforma Invoice Theme' : 'Delivery Challan Theme'}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            {availableThemes.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setThemeId(t.id)}
-                className={`p-2.5 rounded-lg border text-left transition-all flex items-center justify-between ${
-                  themeId === t.id
-                    ? 'border-indigo-600 bg-white ring-2 ring-indigo-500/20 shadow-xs'
-                    : 'border-slate-200 bg-white/70 hover:bg-white hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-4 h-4 rounded-full border border-slate-300 shrink-0"
-                    style={{ backgroundColor: `rgb(${t.primaryColor.join(',')})` }}
-                  />
-                  <span className="font-medium text-slate-800 text-xs truncate">{t.name}</span>
-                </div>
-                {themeId === t.id && <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 ml-1" />}
-              </button>
-            ))}
           </div>
         </div>
 

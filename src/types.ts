@@ -119,7 +119,12 @@ export interface Document {
   sourceChallanId?: string;
   companyId?: string;
   theme?: string;
+  designId?: string;
+  invoiceTemplate?: InvoiceTemplate;
+  template?: InvoiceTemplate;
 }
+
+export type InvoiceTemplate = 'Modern' | 'Classic' | 'Minimal';
 
 export interface ProductList {
   id: string;
@@ -187,6 +192,10 @@ export interface CompanyProfile {
   invoiceTheme?: string;
   proformaTheme?: string;
   challanTheme?: string;
+  defaultInvoiceDesign?: string;
+  defaultProformaDesign?: string;
+  defaultChallanDesign?: string;
+  defaultInvoiceTemplate?: InvoiceTemplate;
 }
 
 export interface DriveFileInfo {

@@ -4,7 +4,7 @@ import {
   PaymentRecord, StaffUser, Item, ProductList 
 } from './types';
 import { 
-  INITIAL_CLIENTS, INITIAL_COMPANY, INITIAL_CURRENCIES, 
+  INITIAL_CLIENTS, INITIAL_COMPANIES, INITIAL_COMPANY, INITIAL_CURRENCIES, 
   INITIAL_DOCUMENTS, INITIAL_STAFF, INITIAL_ITEMS, INITIAL_PRODUCT_LISTS 
 } from './mockData';
 import { initAuth, googleSignIn, logout, getAccessToken } from './services/auth';
@@ -27,55 +27,44 @@ import { BottomActionDock } from './components/BottomActionDock';
 
 import { LayoutDashboard, FileText, Users, Settings, Plus, Cloud, CheckCircle2, Boxes } from 'lucide-react';
 
+// Production initialization: clear any legacy test/mock data from earlier test sessions
+const PROD_INIT_FLAG = 'bbs_production_ready_v3';
+if (typeof window !== 'undefined' && localStorage.getItem(PROD_INIT_FLAG) !== 'true') {
+  localStorage.removeItem('bbs_documents_v1');
+  localStorage.removeItem('bbs_clients_v1');
+  localStorage.removeItem('bbs_items_v2');
+  localStorage.removeItem('bbs_product_lists_v2');
+  localStorage.removeItem('bbs_companies_v2');
+  localStorage.removeItem('bbs_staff_v1');
+  localStorage.removeItem('bbs_company_v1');
+  localStorage.removeItem('bbs_active_comp_id_v2');
+  localStorage.setItem(PROD_INIT_FLAG, 'true');
+}
+
 const STORAGE_KEYS = {
-  DOCS: 'bbs_documents_v1',
-  CLIENTS: 'bbs_clients_v1',
-  COMPANY: 'bbs_company_v1',
-  COMPANIES: 'bbs_companies_v2',
-  ACTIVE_COMPANY_ID: 'bbs_active_comp_id_v2',
-  CURRENCIES: 'bbs_currencies_v1',
-  STAFF: 'bbs_staff_v1',
-  ITEMS: 'bbs_items_v2',
-  PRODUCT_LISTS: 'bbs_product_lists_v2',
+  DOCS: 'bbs_prod_documents_v1',
+  CLIENTS: 'bbs_prod_clients_v1',
+  COMPANIES: 'bbs_prod_companies_v1',
+  ACTIVE_COMPANY_ID: 'bbs_prod_active_comp_id_v1',
+  CURRENCIES: 'bbs_prod_currencies_v1',
+  STAFF: 'bbs_prod_staff_v1',
+  ITEMS: 'bbs_prod_items_v1',
+  PRODUCT_LISTS: 'bbs_prod_product_lists_v1',
 };
 
 export default function App() {
   // Multi-Company State
   const [companies, setCompanies] = useState<CompanyProfile[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.COMPANIES);
-    if (saved) return JSON.parse(saved);
-    const initialWithId: CompanyProfile = {
-      ...INITIAL_COMPANY,
-      id: INITIAL_COMPANY.id || 'comp-1',
-    };
-    const secondaryCompany: CompanyProfile = {
-      id: 'comp-2',
-      name: 'Nexus Logistics & Freight Corp',
-      taxId: '29ABCDE1234F1Z5',
-      email: 'dispatch@nexuslogistics.com',
-      phone: '+91 80 4123 7890',
-      website: 'https://nexuslogistics.com',
-      address: 'Unit 402, Trade Tower, Outer Ring Road',
-      city: 'Bengaluru, Karnataka 560103',
-      logoUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=160&auto=format&fit=crop&q=80',
-      defaultCurrency: 'INR',
-      defaultTaxType: 'gst',
-      defaultTaxRate: 18,
-      isGstInterState: true,
-      invoicePrefix: 'NEX-INV-',
-      proformaPrefix: 'NEX-PI-',
-      challanPrefix: 'NEX-DC-',
-      country: 'India',
-      terms: 'Payment due within 15 days of invoice date. 18% p.a. interest chargeable on overdue remittances.',
-      bankDetails: {
-        bankName: 'ICICI Bank',
-        accountName: 'Nexus Logistics & Freight Corp',
-        accountNumber: '000205001234',
-        ifscSwift: 'ICIC0000002',
-        upiId: 'nexuslogistics@icici',
-      },
-    };
-    return [initialWithId, secondaryCompany];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {
+        console.error('Failed to parse companies from storage', e);
+      }
+    }
+    return INITIAL_COMPANIES;
   });
 
   const [activeCompanyId, setActiveCompanyId] = useState<string>(() => {

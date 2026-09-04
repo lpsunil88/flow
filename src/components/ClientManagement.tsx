@@ -187,8 +187,28 @@ export const ClientManagement: React.FC<ClientManagementProps> = ({
       </div>
 
       {/* Clients Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filteredClients.map((client) => {
+      {filteredClients.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+          <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-slate-800">No clients found</h3>
+          <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+            {searchTerm 
+              ? 'No client matching your search query was found. Try clearing your search.' 
+              : 'Add your business clients and customer contacts to start issuing invoices, dispatch challans, and tracking accounts.'}
+          </p>
+          {currentUser.role !== 'auditor' && !searchTerm && (
+            <button
+              onClick={handleOpenAdd}
+              type="button"
+              className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-lg shadow-xs transition"
+            >
+              + Add First Client
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filteredClients.map((client) => {
           // Dynamic calculation of outstanding from actual documents
           const clientInvoices = documents.filter((d) => d.clientId === client.id && d.type === 'invoice');
           const totalBilledCalc = clientInvoices.reduce((acc, d) => acc + d.grandTotal, 0);
@@ -300,7 +320,8 @@ export const ClientManagement: React.FC<ClientManagementProps> = ({
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
 
       {/* Edit / Add Client Modal */}
       {isModalOpen && editingClient && (

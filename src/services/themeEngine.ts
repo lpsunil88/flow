@@ -536,6 +536,190 @@ export const CHALLAN_THEMES: DocumentTheme[] = [
 
 export const ALL_THEMES = [...INVOICE_THEMES, ...PROFORMA_THEMES, ...CHALLAN_THEMES];
 
+export type DesignLayoutType =
+  | 'modern-minimal'
+  | 'classic-corporate'
+  | 'executive-split'
+  | 'compact-grid'
+  | 'creative-bold'
+  | 'logistics-dispatch'
+  | 'thermal-slip'
+  | 'tender-formal';
+
+export interface DocumentDesign {
+  id: string;
+  name: string;
+  category: 'invoice' | 'proforma' | 'challan' | 'all';
+  layoutType: DesignLayoutType;
+  description: string;
+  badge: string;
+  idealFor: string;
+  previewFeatures: string[];
+  theme: DocumentTheme;
+}
+
+export const DOCUMENT_DESIGNS: DocumentDesign[] = [
+  {
+    id: 'modern-minimal',
+    name: 'Modern Minimalist',
+    category: 'all',
+    layoutType: 'modern-minimal',
+    badge: 'Popular',
+    description: 'Clean edge architecture with floating header, subtle border dividers, and streamlined modern typography.',
+    idealFor: 'Tech startups, agencies, digital products, consulting & freelancers',
+    previewFeatures: [
+      'Frameless airy item rows with soft dividers',
+      'Floating header with sleek company logo branding',
+      'Right-aligned modern summary card with soft shading',
+      'Subtle payment instructions and clean metadata'
+    ],
+    theme: INVOICE_THEMES[0], // modern-indigo
+  },
+  {
+    id: 'classic-corporate',
+    name: 'Classic Corporate',
+    category: 'all',
+    layoutType: 'classic-corporate',
+    badge: 'B2B Standard',
+    description: 'Traditional formal structure with double-lined borders, framed client/seller boxes, table gridlines, and official authorized signatory seal block.',
+    idealFor: 'B2B enterprises, manufacturing, legal, accounting & institutional contracts',
+    previewFeatures: [
+      'Boxed border panels for Seller and Consignee details',
+      'Structured gridlines on every table cell and header',
+      'Dedicated Authorized Signatory & Company Stamp box',
+      'Comprehensive terms & banking wire details block'
+    ],
+    theme: INVOICE_THEMES[1], // classic-corporate
+  },
+  {
+    id: 'executive-split',
+    name: 'Executive Premium',
+    category: 'all',
+    layoutType: 'executive-split',
+    badge: 'Premium',
+    description: 'Striking full-width colored header banner, dual-tone card containers, prominent document badge, and structured banking QR box.',
+    idealFor: 'High-ticket services, executive consulting, luxury commerce & premium B2B',
+    previewFeatures: [
+      'Bold full-width top header band with white contrast typography',
+      'Dual-column client & billing information cards',
+      'Highlighted Total Balance Due banner',
+      'Structured banking details with digital payment handle'
+    ],
+    theme: INVOICE_THEMES[2], // emerald-executive
+  },
+  {
+    id: 'compact-grid',
+    name: 'Compact Tax & GST Ledger',
+    category: 'all',
+    layoutType: 'compact-grid',
+    badge: 'Multi-Item / GST',
+    description: 'High-density tabular ledger featuring HSN/SAC codes, taxable values, and itemized CGST + SGST tax breakdown matrices.',
+    idealFor: 'Wholesalers, distributors, hardware, FMCG, multi-item invoices & GST compliance',
+    previewFeatures: [
+      'High-density table for multi-line inventories (10+ items)',
+      'Dedicated HSN/SAC code, unit rate & discount columns',
+      'Split CGST + SGST or IGST tax breakdown matrix at footer',
+      'Standardized tax invoice declaration text'
+    ],
+    theme: INVOICE_THEMES[3], // minimal-monochrome
+  },
+  {
+    id: 'creative-bold',
+    name: 'Creative Studio',
+    category: 'all',
+    layoutType: 'creative-bold',
+    badge: 'Design Forward',
+    description: 'Contemporary format featuring bold typography, left-accent highlight strip, modern status pills, and rounded cards.',
+    idealFor: 'Designers, architecture firms, marketing agencies & media studios',
+    previewFeatures: [
+      'Oversized bold display typography for document number & totals',
+      'Left-aligned vertical accent strip for visual prominence',
+      'Pill tags for statuses, dates, and currencies',
+      'Clean sans-serif aesthetic with generous negative space'
+    ],
+    theme: PROFORMA_THEMES[2], // sunset-coral
+  },
+  {
+    id: 'logistics-dispatch',
+    name: 'Logistics Dispatch & Gate Pass',
+    category: 'challan',
+    layoutType: 'logistics-dispatch',
+    badge: 'Logistics & Cargo',
+    description: 'Official dispatch slip format engineered for Delivery Challans and material gate passes, featuring vehicle numbers, transporter details, and receiver acknowledgement.',
+    idealFor: 'Warehouse dispatches, freight transport, goods delivery, trial units & consignment transfer',
+    previewFeatures: [
+      'Transporter details, vehicle number & dispatch mode banner',
+      'Returnable vs Non-Returnable goods compliance disclaimer',
+      'Specialized delivery note & material remarks section',
+      'Gate Pass stamp and Receiver Signature sign-off boxes'
+    ],
+    theme: CHALLAN_THEMES[0], // teal-logistics
+  },
+  {
+    id: 'thermal-slip',
+    name: 'Thermal POS Retail Slip',
+    category: 'all',
+    layoutType: 'thermal-slip',
+    badge: 'POS & Counter',
+    description: 'Compact 80mm-style retail receipt layout with monospace typography, dashed divider lines, and compact item summaries.',
+    idealFor: 'Retail counters, service centers, quick sales & compact transaction slips',
+    previewFeatures: [
+      'Narrow centered monospace receipt formatting',
+      'Dashed receipt border separators (cutlines)',
+      'Compact itemized table with quick totals',
+      'Direct UPI payment handle & transaction timestamp'
+    ],
+    theme: CHALLAN_THEMES[1], // industrial-steel
+  },
+  {
+    id: 'tender-formal',
+    name: 'Government & Tender Standard',
+    category: 'all',
+    layoutType: 'tender-formal',
+    badge: 'Public Sector',
+    description: 'Official formal serif format adhering to tender, public procurement, and government contractor compliance standards.',
+    idealFor: 'Government tenders, defense contractors, educational institutions & public works',
+    previewFeatures: [
+      'Formal serif typography with formal procurement headers',
+      'Purchase Order (PO) and Work Order cross-referencing',
+      'Statutory compliance certifications & tax declarations',
+      'Designated official seal and signature endorsement blocks'
+    ],
+    theme: INVOICE_THEMES[1], // classic-corporate
+  },
+];
+
+export function getDesignForDocument(
+  docType: 'invoice' | 'proforma' | 'challan',
+  designIdOrThemeId?: string,
+  companyDefaultDesign?: string,
+  companyDefaultTheme?: string
+): DocumentDesign {
+  const targetId = designIdOrThemeId || companyDefaultDesign || companyDefaultTheme;
+
+  if (targetId) {
+    // 1. Direct design id match
+    const directDesign = DOCUMENT_DESIGNS.find((d) => d.id === targetId || d.layoutType === targetId);
+    if (directDesign) return directDesign;
+
+    // 2. If an old theme ID was passed, find corresponding theme or design
+    const matchedTheme = ALL_THEMES.find((t) => t.id === targetId);
+    if (matchedTheme) {
+      const designWithTheme = DOCUMENT_DESIGNS.find((d) => d.theme.id === matchedTheme.id);
+      if (designWithTheme) return designWithTheme;
+    }
+  }
+
+  // Fallback defaults per document type
+  if (docType === 'challan') {
+    return DOCUMENT_DESIGNS.find((d) => d.id === 'logistics-dispatch') || DOCUMENT_DESIGNS[5];
+  }
+  if (docType === 'proforma') {
+    return DOCUMENT_DESIGNS.find((d) => d.id === 'creative-bold') || DOCUMENT_DESIGNS[0];
+  }
+  return DOCUMENT_DESIGNS[0]; // Modern Minimalist
+}
+
 export function getThemeForDocument(
   docType: 'invoice' | 'proforma' | 'challan',
   themeId?: string,
@@ -545,6 +729,10 @@ export function getThemeForDocument(
   if (targetId) {
     const found = ALL_THEMES.find((t) => t.id === targetId);
     if (found) return found;
+
+    // Check if it's a design id
+    const foundDesign = DOCUMENT_DESIGNS.find((d) => d.id === targetId || d.layoutType === targetId);
+    if (foundDesign) return foundDesign.theme;
   }
 
   // Default fallback per document type
