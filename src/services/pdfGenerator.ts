@@ -54,6 +54,7 @@ export function formatCurrencyForPdf(
 export function generateDocumentPdf(doc: Document, company: CompanyProfile, currencies: CurrencyConfig[] = []): jsPDF {
   const t = resolveDocumentTemplateData(doc, company, currencies);
   const { colors, dimensions, fonts } = DOCUMENT_THEME;
+  const layout = t.layoutTemplate || 'modern';
 
   const pdf = new jsPDF({
     orientation: 'portrait',
@@ -71,44 +72,123 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
   // ==========================================
   // 1. TOP DOCUMENT CATEGORY & TITLE BANNER
   // ==========================================
-  pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(8);
-  pdf.setTextColor(colors.primary.rgb[0], colors.primary.rgb[1], colors.primary.rgb[2]);
-  pdf.text(t.config.divisionText, margin, y + 3.5);
+  if (layout === 'classic') {
+    pdf.setFont(docFont, 'bold');
+    pdf.setFontSize(8.2);
+    pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.text(t.config.divisionText.toUpperCase(), margin, y + 3.5);
 
-  // Big Bold Document Title
-  pdf.setFontSize(15);
-  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
-  pdf.text(t.config.documentTitle, margin, y + 9.5);
+    // Big Bold Document Title (Classic uppercase)
+    pdf.setFontSize(15.5);
+    pdf.text(t.config.documentTitle.toUpperCase(), margin, y + 9.5);
 
-  // Subtitle
-  pdf.setFont(docFont, 'normal');
-  pdf.setFontSize(6.8);
-  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
-  pdf.text(t.config.subtitleText, margin, y + 13);
+    // Subtitle
+    pdf.setFont(docFont, 'normal');
+    pdf.setFontSize(6.8);
+    pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+    pdf.text(t.config.subtitleText, margin, y + 13);
 
-  // Right-aligned banner info
-  pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(7.5);
-  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
-  pdf.text(t.config.defaultCopyLabel, margin + contentWidth, y + 3.5, { align: 'right' });
+    // Right-aligned banner info
+    pdf.setFont(docFont, 'bold');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.text(t.config.defaultCopyLabel, margin + contentWidth, y + 3.5, { align: 'right' });
 
-  pdf.setFont(docFont, 'normal');
-  pdf.setFontSize(7.5);
-  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
-  const purposeLabelX = margin + contentWidth;
-  pdf.text(`Purpose: `, purposeLabelX - pdf.getTextWidth(t.config.defaultPurpose) - 1, y + 8.5, { align: 'right' });
-  pdf.setFont(docFont, 'bold');
-  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
-  pdf.text(t.config.defaultPurpose, purposeLabelX, y + 8.5, { align: 'right' });
+    pdf.setFont(docFont, 'normal');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+    const purposeLabelX = margin + contentWidth;
+    pdf.text(`Purpose: `, purposeLabelX - pdf.getTextWidth(t.config.defaultPurpose) - 1, y + 8.5, { align: 'right' });
+    pdf.setFont(docFont, 'bold');
+    pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.text(t.config.defaultPurpose, purposeLabelX, y + 8.5, { align: 'right' });
 
-  y += 15;
+    y += 15;
+    // Classic double divider line
+    pdf.setDrawColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.setLineWidth(0.5);
+    pdf.line(margin, y, margin + contentWidth, y);
+    pdf.line(margin, y + 1.2, margin + contentWidth, y + 1.2);
+    y += 3.2;
+  } else if (layout === 'minimalist') {
+    pdf.setFont(docFont, 'normal');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+    pdf.text(t.config.divisionText.toUpperCase(), margin, y + 3.5);
 
-  // Thick Horizontal Divider Line
-  pdf.setDrawColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
-  pdf.setLineWidth(0.65);
-  pdf.line(margin, y, margin + contentWidth, y);
-  y += 2.5;
+    // Minimalist clean document title
+    pdf.setFont(docFont, 'bold');
+    pdf.setFontSize(14.5);
+    pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.text(t.config.documentTitle, margin, y + 9.5);
+
+    // Subtitle
+    pdf.setFont(docFont, 'normal');
+    pdf.setFontSize(6.8);
+    pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+    pdf.text(t.config.subtitleText, margin, y + 13);
+
+    // Right-aligned banner info
+    pdf.setFont(docFont, 'normal');
+    pdf.setFontSize(7.2);
+    pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+    pdf.text(t.config.defaultCopyLabel, margin + contentWidth, y + 3.5, { align: 'right' });
+
+    pdf.setFontSize(7.2);
+    pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+    const purposeLabelX = margin + contentWidth;
+    pdf.text(`Purpose: `, purposeLabelX - pdf.getTextWidth(t.config.defaultPurpose) - 1, y + 8.5, { align: 'right' });
+    pdf.setFont(docFont, 'bold');
+    pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.text(t.config.defaultPurpose, purposeLabelX, y + 8.5, { align: 'right' });
+
+    y += 15;
+    // Hairline divider rule
+    pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+    pdf.setLineWidth(0.2);
+    pdf.line(margin, y, margin + contentWidth, y);
+    y += 2.5;
+  } else {
+    // Modern executive
+    pdf.setFont(docFont, 'bold');
+    pdf.setFontSize(8);
+    pdf.setTextColor(colors.primary.rgb[0], colors.primary.rgb[1], colors.primary.rgb[2]);
+    pdf.text(t.config.divisionText, margin, y + 3.5);
+
+    // Big Bold Document Title
+    pdf.setFontSize(15);
+    pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.text(t.config.documentTitle, margin, y + 9.5);
+
+    // Subtitle
+    pdf.setFont(docFont, 'normal');
+    pdf.setFontSize(6.8);
+    pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+    pdf.text(t.config.subtitleText, margin, y + 13);
+
+    // Right-aligned banner info
+    pdf.setFont(docFont, 'bold');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+    pdf.text(t.config.defaultCopyLabel, margin + contentWidth, y + 3.5, { align: 'right' });
+
+    pdf.setFont(docFont, 'normal');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+    const purposeLabelX = margin + contentWidth;
+    pdf.text(`Purpose: `, purposeLabelX - pdf.getTextWidth(t.config.defaultPurpose) - 1, y + 8.5, { align: 'right' });
+    pdf.setFont(docFont, 'bold');
+    pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.text(t.config.defaultPurpose, purposeLabelX, y + 8.5, { align: 'right' });
+
+    y += 15;
+
+    // Thick Horizontal Divider Line
+    pdf.setDrawColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.setLineWidth(0.65);
+    pdf.line(margin, y, margin + contentWidth, y);
+    y += 2.5;
+  }
 
   // ==========================================
   // 2. COMPANY PROFILE HEADER
@@ -183,14 +263,29 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
   // 3. 4-COLUMN METADATA INFO STRIP
   // ==========================================
   const stripH = 11;
-  pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
-  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
-  pdf.setLineWidth(0.3);
-  pdf.roundedRect(margin, y, contentWidth, stripH, 1, 1, 'FD');
-
   const colW = contentWidth / 4; // 47.5mm each
-  for (let i = 1; i < 4; i++) {
-    pdf.line(margin + colW * i, y, margin + colW * i, y + stripH);
+
+  if (layout === 'classic') {
+    pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
+    pdf.setDrawColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+    pdf.setLineWidth(0.4);
+    pdf.rect(margin, y, contentWidth, stripH, 'FD');
+    for (let i = 1; i < 4; i++) {
+      pdf.line(margin + colW * i, y, margin + colW * i, y + stripH);
+    }
+  } else if (layout === 'minimalist') {
+    pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+    pdf.setLineWidth(0.2);
+    pdf.line(margin, y, margin + contentWidth, y);
+    pdf.line(margin, y + stripH, margin + contentWidth, y + stripH);
+  } else {
+    pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
+    pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+    pdf.setLineWidth(0.3);
+    pdf.roundedRect(margin, y, contentWidth, stripH, 1, 1, 'FD');
+    for (let i = 1; i < 4; i++) {
+      pdf.line(margin + colW * i, y, margin + colW * i, y + stripH);
+    }
   }
 
   // Col 1: Document Number
@@ -240,19 +335,44 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
   // ==========================================
   const cardW = (contentWidth - 4) / 2; // 93mm each
   const cardH = 26;
+  const rightCardX = margin + cardW + 4;
 
-  // Left Card: Consignor / Seller
-  pdf.setFillColor(255, 255, 255);
-  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
-  pdf.setLineWidth(0.3);
-  pdf.roundedRect(margin, y, cardW, cardH, 1.2, 1.2, 'FD');
+  if (layout === 'classic') {
+    // Sharp rectangular enterprise boxes with solid borders
+    pdf.setFillColor(255, 255, 255);
+    pdf.setDrawColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+    pdf.setLineWidth(0.4);
+    pdf.rect(margin, y, cardW, cardH, 'FD');
+    pdf.rect(rightCardX, y, cardW, cardH, 'FD');
 
-  // Left Card Header Bar
-  pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
-  pdf.rect(margin, y, cardW, 5, 'F');
-  pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
-  pdf.line(margin, y + 5, margin + cardW, y + 5);
+    // Header bars
+    pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
+    pdf.rect(margin, y, cardW, 5, 'FD');
+    pdf.rect(rightCardX, y, cardW, 5, 'FD');
+  } else if (layout === 'minimalist') {
+    // Clean unboxed studio layout with hairline dividers
+    pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+    pdf.setLineWidth(0.2);
+    pdf.line(margin, y + 5, margin + cardW, y + 5);
+    pdf.line(rightCardX, y + 5, rightCardX + cardW, y + 5);
+  } else {
+    // Modern executive rounded cards
+    pdf.setFillColor(255, 255, 255);
+    pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+    pdf.setLineWidth(0.3);
+    pdf.roundedRect(margin, y, cardW, cardH, 1.2, 1.2, 'FD');
+    pdf.roundedRect(rightCardX, y, cardW, cardH, 1.2, 1.2, 'FD');
 
+    // Header bars
+    pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
+    pdf.rect(margin, y, cardW, 5, 'F');
+    pdf.rect(rightCardX, y, cardW, 5, 'F');
+    pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+    pdf.line(margin, y + 5, margin + cardW, y + 5);
+    pdf.line(rightCardX, y + 5, rightCardX + cardW, y + 5);
+  }
+
+  // Left Card Header text
   pdf.setFont(docFont, 'bold');
   pdf.setFontSize(6.5);
   pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
@@ -290,18 +410,7 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
   pdf.setFont(docFont, 'normal');
   pdf.text(pdf.splitTextToSize(t.sellerContact, cardW - 16)[0], margin + 13.5, cardLeftY);
 
-  // Right Card: Consignee / Buyer
-  const rightCardX = margin + cardW + 4;
-  pdf.setFillColor(255, 255, 255);
-  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
-  pdf.roundedRect(rightCardX, y, cardW, cardH, 1.2, 1.2, 'FD');
-
-  // Right Card Header Bar
-  pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
-  pdf.rect(rightCardX, y, cardW, 5, 'F');
-  pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
-  pdf.line(rightCardX, y + 5, rightCardX + cardW, y + 5);
-
+  // Right Card Header text
   pdf.setFont(docFont, 'bold');
   pdf.setFontSize(6.5);
   pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
@@ -345,16 +454,31 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
   // 5. TRANSPORT / LOGISTICS DETAILS STRIP
   // ==========================================
   const transH = 6;
-  pdf.setFillColor(255, 255, 255);
-  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
-  pdf.setLineWidth(0.3);
-  pdf.roundedRect(margin, y, contentWidth, transH, 1, 1, 'FD');
+  const transItemW = contentWidth / 4;
+
+  if (layout === 'classic') {
+    pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
+    pdf.setDrawColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+    pdf.setLineWidth(0.4);
+    pdf.rect(margin, y, contentWidth, transH, 'FD');
+    for (let i = 1; i < 4; i++) {
+      pdf.line(margin + transItemW * i, y, margin + transItemW * i, y + transH);
+    }
+  } else if (layout === 'minimalist') {
+    pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+    pdf.setLineWidth(0.2);
+    pdf.line(margin, y, margin + contentWidth, y);
+    pdf.line(margin, y + transH, margin + contentWidth, y + transH);
+  } else {
+    pdf.setFillColor(255, 255, 255);
+    pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+    pdf.setLineWidth(0.3);
+    pdf.roundedRect(margin, y, contentWidth, transH, 1, 1, 'FD');
+  }
 
   pdf.setFont(docFont, 'normal');
   pdf.setFontSize(6.6);
   pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
-
-  const transItemW = contentWidth / 4;
 
   // Item 1: Transport Mode
   pdf.text('Transport Mode: ', margin + 2.5, y + 4.1);
@@ -392,18 +516,31 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
   // 6. LINE ITEMS TABLE (FROM SHARED BASE COLUMNS)
   // ==========================================
   const tableHeaderH = 6.5;
-  pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
-  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
-  pdf.setLineWidth(0.3);
-  pdf.rect(margin, y, contentWidth, tableHeaderH, 'FD');
-
   let curX = margin;
+
+  if (layout === 'classic') {
+    pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
+    pdf.setDrawColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+    pdf.setLineWidth(0.4);
+    pdf.rect(margin, y, contentWidth, tableHeaderH, 'FD');
+  } else if (layout === 'minimalist') {
+    pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, y, margin + contentWidth, y);
+    pdf.line(margin, y + tableHeaderH, margin + contentWidth, y + tableHeaderH);
+  } else {
+    pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
+    pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+    pdf.setLineWidth(0.3);
+    pdf.rect(margin, y, contentWidth, tableHeaderH, 'FD');
+  }
+
   pdf.setFont(docFont, 'bold');
   pdf.setFontSize(6.4);
   pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
 
   t.tableColumns.forEach((col, idx) => {
-    if (idx > 0) {
+    if (idx > 0 && layout !== 'minimalist') {
       pdf.line(curX, y, curX, y + tableHeaderH);
     }
     const textTargetX =
@@ -438,17 +575,18 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
     const descLines = pdf.splitTextToSize(item.description || 'Item Description', 50);
     const rowH = Math.max(5.8, descLines.length * 3.2 + 2.5);
 
-    if (index % 2 === 1) {
+    if (index % 2 === 1 && layout !== 'minimalist') {
       pdf.setFillColor(250, 250, 250);
       pdf.rect(margin, y, contentWidth, rowH, 'F');
     }
 
     pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+    pdf.setLineWidth(layout === 'minimalist' ? 0.2 : 0.25);
     pdf.line(margin, y + rowH, margin + contentWidth, y + rowH);
 
     let cellX = margin;
     t.tableColumns.forEach((col, idx) => {
-      if (idx > 0) {
+      if (idx > 0 && layout !== 'minimalist') {
         pdf.line(cellX, y, cellX, y + rowH);
       }
 
@@ -499,33 +637,52 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
 
   // Table Subtotal Row
   const subtotalH = 5.8;
-  pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
-  pdf.rect(margin, y, contentWidth, subtotalH, 'F');
-  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
-  pdf.rect(margin, y, contentWidth, subtotalH, 'S');
+  const labelSpanW = 104;
+
+  if (layout === 'classic') {
+    pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
+    pdf.rect(margin, y, contentWidth, subtotalH, 'FD');
+  } else if (layout === 'minimalist') {
+    pdf.setDrawColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, y, margin + contentWidth, y);
+    pdf.line(margin, y + subtotalH, margin + contentWidth, y + subtotalH);
+  } else {
+    pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
+    pdf.rect(margin, y, contentWidth, subtotalH, 'F');
+    pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+    pdf.rect(margin, y, contentWidth, subtotalH, 'S');
+  }
 
   // "Sub Total" label spanning col 1-5 (8 + 54 + 17 + 13 + 12 = 104mm)
-  const labelSpanW = 104;
   pdf.setFont(docFont, 'bold');
   pdf.setFontSize(6.8);
   pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
   pdf.text('Sub Total', margin + labelSpanW - 4, y + 4, { align: 'right' });
 
   let subColX = margin + labelSpanW;
-  pdf.line(subColX, y, subColX, y + subtotalH);
+  if (layout !== 'minimalist') {
+    pdf.line(subColX, y, subColX, y + subtotalH);
+  }
 
   subColX += 19;
-  pdf.line(subColX, y, subColX, y + subtotalH);
+  if (layout !== 'minimalist') {
+    pdf.line(subColX, y, subColX, y + subtotalH);
+  }
 
   // Taxable Val Total
   pdf.text(doc.subtotal.toFixed(2), subColX + 21 - 2, y + 4, { align: 'right' });
   subColX += 21;
-  pdf.line(subColX, y, subColX, y + subtotalH);
+  if (layout !== 'minimalist') {
+    pdf.line(subColX, y, subColX, y + subtotalH);
+  }
 
   // Tax Total
   pdf.text(doc.taxAmount.toFixed(2), subColX + 18 - 2, y + 4, { align: 'right' });
   subColX += 18;
-  pdf.line(subColX, y, subColX, y + subtotalH);
+  if (layout !== 'minimalist') {
+    pdf.line(subColX, y, subColX, y + subtotalH);
+  }
 
   // Grand Total
   pdf.text(doc.grandTotal.toFixed(2), subColX + 28 - 2, y + 4, { align: 'right' });
@@ -536,10 +693,22 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
   // 7. TOTAL ITEMS & QUANTITY STRIP
   // ==========================================
   const summaryStripH = 5.5;
-  pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
-  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
-  pdf.setLineWidth(0.3);
-  pdf.roundedRect(margin, y, contentWidth, summaryStripH, 1, 1, 'FD');
+
+  if (layout === 'classic') {
+    pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
+    pdf.setDrawColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+    pdf.setLineWidth(0.4);
+    pdf.rect(margin, y, contentWidth, summaryStripH, 'FD');
+  } else if (layout === 'minimalist') {
+    pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+    pdf.setLineWidth(0.2);
+    pdf.line(margin, y + summaryStripH, margin + contentWidth, y + summaryStripH);
+  } else {
+    pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
+    pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+    pdf.setLineWidth(0.3);
+    pdf.roundedRect(margin, y, contentWidth, summaryStripH, 1, 1, 'FD');
+  }
 
   pdf.setFont(docFont, 'bold');
   pdf.setFontSize(6.4);
@@ -558,11 +727,24 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
   const splitRightW = contentWidth - splitLeftW; // 86mm
   const splitX = margin + splitLeftW;
 
-  pdf.setFillColor(255, 255, 255);
-  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
-  pdf.setLineWidth(0.3);
-  pdf.rect(margin, y, contentWidth, particularsH, 'S');
-  pdf.line(splitX, y, splitX, y + particularsH);
+  if (layout === 'classic') {
+    pdf.setFillColor(255, 255, 255);
+    pdf.setDrawColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+    pdf.setLineWidth(0.4);
+    pdf.rect(margin, y, contentWidth, particularsH, 'S');
+    pdf.line(splitX, y, splitX, y + particularsH);
+  } else if (layout === 'minimalist') {
+    pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+    pdf.setLineWidth(0.2);
+    pdf.line(splitX, y + 2, splitX, y + particularsH - 2);
+    pdf.line(margin, y + particularsH, margin + contentWidth, y + particularsH);
+  } else {
+    pdf.setFillColor(255, 255, 255);
+    pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+    pdf.setLineWidth(0.3);
+    pdf.rect(margin, y, contentWidth, particularsH, 'S');
+    pdf.line(splitX, y, splitX, y + particularsH);
+  }
 
   // --- LEFT SIDE: Amount in Words, Remarks, Bank Details ---
   let leftY = y + 4.5;
@@ -669,13 +851,27 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
     rightY += 4.5;
   }
 
-  // Grand Total Highlight Double Border Box
-  pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
-  pdf.rect(splitX, rightY - 1, splitRightW, 7, 'F');
-  pdf.setDrawColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
-  pdf.setLineWidth(0.4);
-  pdf.line(splitX, rightY - 1, margin + contentWidth, rightY - 1);
-  pdf.line(splitX, rightY + 6, margin + contentWidth, rightY + 6);
+  // Grand Total Highlight
+  if (layout === 'classic') {
+    pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
+    pdf.rect(splitX, rightY - 1, splitRightW, 7, 'F');
+    pdf.setDrawColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.setLineWidth(0.4);
+    pdf.line(splitX, rightY - 1, margin + contentWidth, rightY - 1);
+    pdf.line(splitX, rightY + 6, margin + contentWidth, rightY + 6);
+    pdf.line(splitX, rightY + 7, margin + contentWidth, rightY + 7);
+  } else if (layout === 'minimalist') {
+    pdf.setDrawColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.setLineWidth(0.3);
+    pdf.line(splitX, rightY - 1, margin + contentWidth, rightY - 1);
+  } else {
+    pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
+    pdf.rect(splitX, rightY - 1, splitRightW, 7, 'F');
+    pdf.setDrawColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.setLineWidth(0.4);
+    pdf.line(splitX, rightY - 1, margin + contentWidth, rightY - 1);
+    pdf.line(splitX, rightY + 6, margin + contentWidth, rightY + 6);
+  }
 
   pdf.setFont(docFont, 'bold');
   pdf.setFontSize(8.5);
@@ -705,11 +901,24 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
   // 9. DECLARATIONS, TERMS & DUAL SIGNATURES
   // ==========================================
   const bottomBoxH = 26;
-  pdf.setFillColor(255, 255, 255);
-  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
-  pdf.setLineWidth(0.3);
-  pdf.rect(margin, y, contentWidth, bottomBoxH, 'S');
-  pdf.line(splitX, y, splitX, y + bottomBoxH);
+
+  if (layout === 'classic') {
+    pdf.setFillColor(255, 255, 255);
+    pdf.setDrawColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+    pdf.setLineWidth(0.4);
+    pdf.rect(margin, y, contentWidth, bottomBoxH, 'S');
+    pdf.line(splitX, y, splitX, y + bottomBoxH);
+  } else if (layout === 'minimalist') {
+    pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+    pdf.setLineWidth(0.2);
+    pdf.line(margin, y, margin + contentWidth, y);
+  } else {
+    pdf.setFillColor(255, 255, 255);
+    pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+    pdf.setLineWidth(0.3);
+    pdf.rect(margin, y, contentWidth, bottomBoxH, 'S');
+    pdf.line(splitX, y, splitX, y + bottomBoxH);
+  }
 
   // Left: Declaration & Terms
   pdf.setFont(docFont, 'bold');

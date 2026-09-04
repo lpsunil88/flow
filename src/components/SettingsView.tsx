@@ -1,15 +1,16 @@
 import React, { useState, useRef } from 'react';
-import { CompanyProfile, CurrencyConfig, StaffUser, UserRole } from '../types';
+import { CompanyProfile, CurrencyConfig, StaffUser, UserRole, DocumentLayoutTemplate } from '../types';
 import { 
   Building2, Globe, Percent, Shield, Cloud, 
   Save, RefreshCw, CheckCircle2, UserCheck, Plus, Trash2, Key, 
   Upload, Image, Check, Sparkles, Loader2, Search, ExternalLink,
   Briefcase, Star, UserPlus, ShieldAlert, KeyRound, Lock, Eye, EyeOff,
-  FileText, Truck, Stamp, PenTool, FileSignature, MapPin
+  FileText, Truck, Stamp, PenTool, FileSignature, MapPin, Palette, LayoutTemplate, Layers
 } from 'lucide-react';
 import { saveBillingDataToDrive, loadBillingDataFromDrive } from '../services/googleDrive';
 import { CreateStaffModal } from './CreateStaffModal';
 import { generateSampleStamp, generateSampleSignature } from '../utils/stampSignature';
+import { LAYOUT_TEMPLATES_CONFIG } from '../services/documentTemplate';
 
 interface SettingsViewProps {
   company: CompanyProfile;
@@ -1103,6 +1104,215 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
               </div>
             )}
+          </div>
+
+          {/* SECTION: DOCUMENT BRANDING & PDF LAYOUT TEMPLATES */}
+          <div className="pt-4 border-t border-slate-200 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-indigo-600" />
+                  <span>Document Branding & PDF Layout</span>
+                  <span className="text-[10px] font-semibold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200">
+                    Standardized Engine
+                  </span>
+                </h3>
+                <p className="text-slate-500 text-xs mt-0.5">
+                  Choose the default layout design applied across all your official Invoices, Delivery Challans, and Proformas. Each template standardizes fonts, tables, statutory sections, and branding stamps.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-slate-500">Current Template:</span>
+                <span className="font-bold text-slate-900 capitalize bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+                  {company.documentTemplate || 'modern'}
+                </span>
+              </div>
+            </div>
+
+            {/* 3 Layout Cards Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-1">
+              {(['minimalist', 'modern', 'classic'] as DocumentLayoutTemplate[]).map((layoutKey) => {
+                const config = LAYOUT_TEMPLATES_CONFIG[layoutKey];
+                const isSelected = (company.documentTemplate || 'modern') === layoutKey;
+
+                return (
+                  <div
+                    key={layoutKey}
+                    onClick={() => {
+                      if (!canEdit) return;
+                      setCompany((prev) => ({ ...prev, documentTemplate: layoutKey }));
+                    }}
+                    className={`relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-indigo-600 bg-indigo-50/20 shadow-md ring-2 ring-indigo-500/20'
+                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50 shadow-2xs'
+                    }`}
+                  >
+                    <div>
+                      {/* Top Header Strip */}
+                      <div className="flex items-start justify-between gap-2 mb-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                            <LayoutTemplate className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-slate-950 text-sm leading-tight">
+                              {config.name}
+                            </h4>
+                            <span className="text-[10px] font-semibold text-slate-500">
+                              {config.badge}
+                            </span>
+                          </div>
+                        </div>
+
+                        {isSelected ? (
+                          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full shrink-0">
+                            <Check className="w-3 h-3 stroke-[2.5]" /> Active
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full shrink-0">
+                            Click to select
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Visual Blueprint Representation */}
+                      <div className="my-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
+                        {layoutKey === 'minimalist' && (
+                          <div className="space-y-1 text-[9px] text-slate-600">
+                            <div className="flex justify-between border-b border-slate-300 pb-1">
+                              <span className="font-semibold text-slate-900">INVOICE</span>
+                              <span className="text-slate-400">HAIRLINE DIVIDERS</span>
+                            </div>
+                            <div className="flex justify-between text-[8.5px] text-slate-500 py-0.5">
+                              <span>Consignor Name</span>
+                              <span>Consignee Name</span>
+                            </div>
+                            <div className="border-t border-b border-slate-200 py-1 space-y-0.5">
+                              <div className="flex justify-between text-[8px] font-medium text-slate-700">
+                                <span>Item Description</span>
+                                <span>Amount</span>
+                              </div>
+                              <div className="h-1 bg-slate-200 rounded-xs w-3/4" />
+                            </div>
+                            <div className="flex justify-end text-[9px] font-semibold text-slate-900 pt-0.5">
+                              <span>Grand Total: ₹--</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {layoutKey === 'modern' && (
+                          <div className="space-y-1 text-[9px] text-slate-600">
+                            <div className="flex justify-between items-center bg-blue-50 px-1.5 py-1 rounded border border-blue-200">
+                              <span className="font-bold text-blue-900">TAX INVOICE</span>
+                              <span className="text-[8px] text-blue-700 font-medium">BLUE ACCENTS</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1 py-0.5">
+                              <div className="bg-white p-1 rounded border border-slate-200 text-[8px]">
+                                <span className="font-bold text-slate-800">SELLER CARD</span>
+                              </div>
+                              <div className="bg-white p-1 rounded border border-slate-200 text-[8px]">
+                                <span className="font-bold text-slate-800">BUYER CARD</span>
+                              </div>
+                            </div>
+                            <div className="bg-white rounded border border-slate-200 p-1 space-y-0.5">
+                              <div className="flex justify-between text-[8px] font-bold text-slate-800 border-b border-slate-100 pb-0.5">
+                                <span>9-Col Merchandise Grid</span>
+                                <span>Total</span>
+                              </div>
+                              <div className="h-1 bg-blue-100 rounded-xs w-2/3" />
+                            </div>
+                            <div className="flex justify-between items-center bg-slate-100 px-1 py-0.5 rounded text-[8.5px] font-bold text-slate-950">
+                              <span>Grand Total</span>
+                              <span>₹--</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {layoutKey === 'classic' && (
+                          <div className="space-y-1 text-[9px] text-slate-600 font-serif">
+                            <div className="border-b-2 border-slate-900 pb-0.5 flex justify-between">
+                              <span className="font-black tracking-wider text-slate-950">TAX INVOICE</span>
+                              <span className="text-[8px] font-sans font-medium text-slate-500">DOUBLE RULE</span>
+                            </div>
+                            <div className="h-[1px] bg-slate-900 -mt-0.5 mb-1" />
+                            <div className="grid grid-cols-2 gap-1 py-0.5">
+                              <div className="bg-white p-1 border border-slate-400 text-[8px]">
+                                <span className="font-bold">CONSIGNOR PANEL</span>
+                              </div>
+                              <div className="bg-white p-1 border border-slate-400 text-[8px]">
+                                <span className="font-bold">CONSIGNEE PANEL</span>
+                              </div>
+                            </div>
+                            <div className="border border-slate-400 p-0.5 space-y-0.5 bg-slate-50">
+                              <div className="flex justify-between text-[8px] font-bold text-slate-900 bg-slate-200 px-1">
+                                <span>TABULAR GRID</span>
+                                <span>AMOUNT</span>
+                              </div>
+                              <div className="h-1 bg-slate-300 w-full" />
+                            </div>
+                            <div className="border-y border-slate-900 py-0.5 text-right font-bold text-[8.5px]">
+                              GRAND TOTAL: ₹--
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Tagline */}
+                      <p className="text-[11.5px] text-slate-600 mb-3 leading-relaxed">
+                        {config.tagline}
+                      </p>
+
+                      {/* Key Features List */}
+                      <div className="space-y-1.5 border-t border-slate-200/80 pt-2.5">
+                        <div className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                          Key Features:
+                        </div>
+                        <ul className="space-y-1 text-[11px] text-slate-600">
+                          {config.features.map((feat, idx) => (
+                            <li key={idx} className="flex items-start gap-1.5">
+                              <span className="text-indigo-500 font-bold shrink-0">•</span>
+                              <span className="leading-tight">{feat}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {/* Footer selection button */}
+                    <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[10.5px] text-slate-500 font-medium">
+                        Best for: <strong className="text-slate-700">{config.idealFor.split(',')[0]}</strong>
+                      </span>
+                      <button
+                        type="button"
+                        disabled={!canEdit}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!canEdit) return;
+                          setCompany((prev) => ({ ...prev, documentTemplate: layoutKey }));
+                        }}
+                        className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {isSelected ? 'Active' : 'Apply Layout'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg text-xs text-blue-800 flex items-start gap-2 mt-2">
+              <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+              <div>
+                <strong>Shared Base Template Guarantee:</strong> All layouts render both in high-resolution A4 browser print previews and vector-rendered PDF downloads with identical dimensions, company branding logos, official rubber stamps, signatures, and legal compliance.
+              </div>
+            </div>
           </div>
         </div>
       )}

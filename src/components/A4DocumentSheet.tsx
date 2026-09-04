@@ -1,5 +1,5 @@
 import React from 'react';
-import { CompanyProfile, CurrencyConfig, Document } from '../types';
+import { CompanyProfile, CurrencyConfig, Document, DocumentLayoutTemplate } from '../types';
 import {
   DOCUMENT_THEME,
   resolveDocumentTemplateData,
@@ -12,6 +12,7 @@ interface A4DocumentSheetProps {
   watermarkText?: string;
   copyLabel?: string;
   purposeText?: string;
+  layoutTemplate?: DocumentLayoutTemplate;
 }
 
 export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
@@ -21,19 +22,22 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
   watermarkText,
   copyLabel,
   purposeText,
+  layoutTemplate,
 }) => {
   const t = resolveDocumentTemplateData(doc, company, currencies, {
     watermarkText,
     copyLabel,
     purposeText,
+    layoutTemplate,
   });
 
   const { colors, fonts } = DOCUMENT_THEME;
+  const layout = t.layoutTemplate || 'modern';
 
   return (
     <div
       id="a4-printable-sheet"
-      className={`a4-sheet-container w-full max-w-[210mm] min-h-[297mm] mx-auto bg-white text-slate-900 shadow-xl border ${colors.borderSubtle.tailwindBorder} p-8 sm:p-10 relative ${fonts.webFont} text-xs box-border print:border-none print:shadow-none print:p-6 print:w-[210mm] print:max-w-[210mm] print:m-0 print:box-border`}
+      className={`a4-sheet-container w-full max-w-[210mm] min-h-[297mm] mx-auto bg-white text-slate-900 shadow-xl border ${colors.borderSubtle.tailwindBorder} p-8 sm:p-10 relative ${layout === 'classic' ? 'font-serif' : fonts.webFont} text-xs box-border print:border-none print:shadow-none print:p-6 print:w-[210mm] print:max-w-[210mm] print:m-0 print:box-border`}
       style={{
         boxSizing: 'border-box',
       }}
@@ -54,10 +58,10 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
           {/* Top Document Category & Title Banner */}
           <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
             <div>
-              <div className={`text-[11px] font-bold ${colors.primary.tailwindText} tracking-wider uppercase`}>
+              <div className={`text-[11px] font-bold ${layout === 'classic' ? 'text-slate-900 uppercase tracking-widest' : layout === 'minimalist' ? 'text-slate-400 tracking-wider uppercase' : `${colors.primary.tailwindText} tracking-wider uppercase`}`}>
                 {t.config.divisionText}
               </div>
-              <h1 className="text-2xl font-black text-slate-950 tracking-tight leading-none mt-0.5">
+              <h1 className={`text-2xl font-black text-slate-950 tracking-tight leading-none mt-0.5 ${layout === 'classic' ? 'uppercase font-serif tracking-normal' : ''}`}>
                 {t.config.documentTitle}
               </h1>
               <p className="text-[11px] text-slate-500 font-normal mt-0.5">
@@ -76,8 +80,17 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
             </div>
           </div>
 
-          {/* Solid Thick Horizontal Divider */}
-          <div className="h-[2.5px] bg-slate-950 w-full mt-2 mb-3" />
+          {/* Divider between banner and company header */}
+          {layout === 'classic' ? (
+            <div className="my-2.5">
+              <div className="h-[2px] bg-slate-950 w-full" />
+              <div className="h-[1px] bg-slate-950 w-full mt-[1.5px]" />
+            </div>
+          ) : layout === 'minimalist' ? (
+            <div className="h-[1px] bg-slate-200 w-full mt-2 mb-3" />
+          ) : (
+            <div className="h-[2.5px] bg-slate-950 w-full mt-2 mb-3" />
+          )}
 
           {/* Company Profile Header */}
           <div className="space-y-1">
@@ -86,10 +99,10 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
                 <img
                   src={company.logoUrl}
                   alt={company.name}
-                  className="w-10 h-10 object-contain rounded border border-slate-200 p-0.5 shrink-0 bg-white"
+                  className={`w-10 h-10 object-contain ${layout === 'classic' ? 'rounded-none' : 'rounded'} border border-slate-200 p-0.5 shrink-0 bg-white`}
                 />
               ) : (
-                <div className="w-10 h-10 rounded border border-amber-300 bg-amber-50 text-amber-500 font-bold text-lg flex items-center justify-center shrink-0">
+                <div className={`w-10 h-10 ${layout === 'classic' ? 'rounded-none' : 'rounded'} border border-amber-300 bg-amber-50 text-amber-500 font-bold text-lg flex items-center justify-center shrink-0`}>
                   {t.monogram}
                 </div>
               )}
@@ -149,7 +162,13 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
           <div className="h-[1px] bg-slate-200 w-full my-2.5" />
 
           {/* 4-Column Metadata Info Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pb-2 text-[11px]">
+          <div className={`grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] ${
+            layout === 'classic'
+              ? 'border-y border-slate-400 py-2 bg-slate-100/70'
+              : layout === 'minimalist'
+              ? 'border-y border-slate-200 py-2'
+              : 'border border-slate-200 rounded-lg p-2.5 bg-slate-50'
+          }`}>
             <div>
               <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                 {t.config.col1Label}
@@ -189,13 +208,19 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
             </div>
           </div>
 
-          <div className="h-[1px] bg-slate-200 w-full mb-3" />
+          <div className="h-[1px] bg-transparent w-full my-2" />
 
           {/* Consignor (Dispatch Location) & Consignee (Recipient) Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
             {/* Consignor Card */}
-            <div className={`border ${colors.borderStandard.tailwindBorder} rounded-lg p-2.5 bg-white text-[11px] space-y-1 shadow-2xs`}>
-              <div className="flex justify-between items-center border-b border-slate-100 pb-1 text-[10px] font-bold text-slate-700">
+            <div className={`${
+              layout === 'classic'
+                ? 'border border-slate-400 rounded-none p-2.5 bg-white text-[11px] space-y-1'
+                : layout === 'minimalist'
+                ? 'border-t border-slate-300 pt-2 bg-transparent text-[11px] space-y-1'
+                : `border ${colors.borderStandard.tailwindBorder} rounded-lg p-2.5 bg-white text-[11px] space-y-1 shadow-2xs`
+            }`}>
+              <div className="flex justify-between items-center border-b border-slate-200 pb-1 text-[10px] font-bold text-slate-700">
                 <span className="uppercase tracking-wider">
                   {t.config.sellerCardTitle}
                 </span>
@@ -229,8 +254,14 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
             </div>
 
             {/* Consignee Card */}
-            <div className={`border ${colors.borderStandard.tailwindBorder} rounded-lg p-2.5 bg-white text-[11px] space-y-1 shadow-2xs`}>
-              <div className="flex justify-between items-center border-b border-slate-100 pb-1 text-[10px] font-bold text-slate-700">
+            <div className={`${
+              layout === 'classic'
+                ? 'border border-slate-400 rounded-none p-2.5 bg-white text-[11px] space-y-1'
+                : layout === 'minimalist'
+                ? 'border-t border-slate-300 pt-2 bg-transparent text-[11px] space-y-1'
+                : `border ${colors.borderStandard.tailwindBorder} rounded-lg p-2.5 bg-white text-[11px] space-y-1 shadow-2xs`
+            }`}>
+              <div className="flex justify-between items-center border-b border-slate-200 pb-1 text-[10px] font-bold text-slate-700">
                 <span className="uppercase tracking-wider">
                   {t.config.buyerCardTitle}
                 </span>
@@ -266,7 +297,13 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
           </div>
 
           {/* Transport / Logistics Details Strip */}
-          <div className={`border ${colors.borderStandard.tailwindBorder} rounded-lg px-3 py-1.5 bg-white text-[10.5px] text-slate-700 flex flex-wrap justify-between items-center gap-2 mb-3 shadow-2xs`}>
+          <div className={`${
+            layout === 'classic'
+              ? 'border border-slate-400 rounded-none px-3 py-1.5 bg-slate-50 text-[10.5px] text-slate-700 flex flex-wrap justify-between items-center gap-2 mb-3'
+              : layout === 'minimalist'
+              ? 'border-y border-slate-200 px-1 py-1.5 bg-transparent text-[10.5px] text-slate-700 flex flex-wrap justify-between items-center gap-2 mb-3'
+              : `border ${colors.borderStandard.tailwindBorder} rounded-lg px-3 py-1.5 bg-white text-[10.5px] text-slate-700 flex flex-wrap justify-between items-center gap-2 mb-3 shadow-2xs`
+          }`}>
             <div>
               <span className="text-slate-500 font-medium">Transport Mode: </span>
               <strong className="font-semibold text-slate-900">{t.transportMode}</strong>
@@ -289,14 +326,30 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
           </div>
 
           {/* Line Items Table */}
-          <div className={`border ${colors.borderStandard.tailwindBorder} rounded-lg overflow-hidden bg-white mb-3`}>
+          <div className={`${
+            layout === 'classic'
+              ? 'border border-slate-400 rounded-none overflow-hidden bg-white mb-3'
+              : layout === 'minimalist'
+              ? 'overflow-hidden bg-transparent mb-3'
+              : `border ${colors.borderStandard.tailwindBorder} rounded-lg overflow-hidden bg-white mb-3`
+          }`}>
             <table className="w-full text-left text-[11px] border-collapse">
               <thead>
-                <tr className="border-b border-slate-300 bg-slate-50/70 text-[10px] font-bold text-slate-800">
+                <tr className={`${
+                  layout === 'classic'
+                    ? 'border-b-2 border-slate-400 bg-slate-100 text-[10px] font-bold text-slate-900'
+                    : layout === 'minimalist'
+                    ? 'border-b border-slate-950 text-[10px] font-bold text-slate-900'
+                    : 'border-b border-slate-300 bg-slate-50/70 text-[10px] font-bold text-slate-800'
+                }`}>
                   {t.tableColumns.map((col) => (
                     <th
                       key={col.key}
-                      className={`py-2 px-2 ${col.tailwindAlignClass} ${col.tailwindWidthClass} border-r last:border-r-0 border-slate-300`}
+                      className={`py-2 px-2 ${col.tailwindAlignClass} ${col.tailwindWidthClass} ${
+                        layout === 'minimalist'
+                          ? ''
+                          : 'border-r last:border-r-0 border-slate-300'
+                      }`}
                     >
                       {col.key === 'rate'
                         ? `Rate (${t.currencySymbol})`
@@ -312,7 +365,7 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-200">
+              <tbody className={layout === 'minimalist' ? 'divide-y divide-slate-100' : 'divide-y divide-slate-200'}>
                 {doc.items.length === 0 ? (
                   <tr>
                     <td colSpan={t.tableColumns.length} className="py-6 text-center text-slate-400">
@@ -321,12 +374,12 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
                   </tr>
                 ) : (
                   doc.items.map((item, idx) => (
-                    <tr key={item.id || idx} className="hover:bg-slate-50/50">
-                      <td className="py-2.5 px-2 text-center text-slate-600 border-r border-slate-200">
+                    <tr key={item.id || idx} className={layout === 'minimalist' ? 'hover:bg-slate-50/30' : 'hover:bg-slate-50/50'}>
+                      <td className={`py-2.5 px-2 text-center text-slate-600 ${layout !== 'minimalist' ? 'border-r border-slate-200' : ''}`}>
                         {idx + 1}
                       </td>
 
-                      <td className="py-2.5 px-3 border-r border-slate-200">
+                      <td className={`py-2.5 px-3 ${layout !== 'minimalist' ? 'border-r border-slate-200' : ''}`}>
                         <div className="font-bold text-slate-900">{item.description}</div>
                         {item.hsnCode && (
                           <div className={`text-[9.5px] ${fonts.monoFont} text-slate-500 mt-0.5`}>
@@ -335,27 +388,27 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
                         )}
                       </td>
 
-                      <td className={`py-2.5 px-2 text-center ${fonts.monoFont} text-slate-700 border-r border-slate-200`}>
+                      <td className={`py-2.5 px-2 text-center ${fonts.monoFont} text-slate-700 ${layout !== 'minimalist' ? 'border-r border-slate-200' : ''}`}>
                         {item.hsnCode || '-'}
                       </td>
 
-                      <td className="py-2.5 px-2 text-center font-semibold text-slate-900 border-r border-slate-200">
+                      <td className={`py-2.5 px-2 text-center font-semibold text-slate-900 ${layout !== 'minimalist' ? 'border-r border-slate-200' : ''}`}>
                         {item.quantity}
                       </td>
 
-                      <td className="py-2.5 px-2 text-center uppercase text-slate-600 font-medium border-r border-slate-200">
+                      <td className={`py-2.5 px-2 text-center uppercase text-slate-600 font-medium ${layout !== 'minimalist' ? 'border-r border-slate-200' : ''}`}>
                         {item.unit || 'PCS'}
                       </td>
 
-                      <td className={`py-2.5 px-2 text-right ${fonts.monoFont} text-slate-700 border-r border-slate-200`}>
+                      <td className={`py-2.5 px-2 text-right ${fonts.monoFont} text-slate-700 ${layout !== 'minimalist' ? 'border-r border-slate-200' : ''}`}>
                         {t.currencySymbol} {item.unitPrice.toFixed(2)}
                       </td>
 
-                      <td className={`py-2.5 px-2 text-right ${fonts.monoFont} font-semibold text-slate-900 border-r border-slate-200`}>
+                      <td className={`py-2.5 px-2 text-right ${fonts.monoFont} font-semibold text-slate-900 ${layout !== 'minimalist' ? 'border-r border-slate-200' : ''}`}>
                         {t.currencySymbol} {item.amount.toFixed(2)}
                       </td>
 
-                      <td className={`py-2.5 px-2 text-right ${fonts.monoFont} text-slate-700 border-r border-slate-200`}>
+                      <td className={`py-2.5 px-2 text-right ${fonts.monoFont} text-slate-700 ${layout !== 'minimalist' ? 'border-r border-slate-200' : ''}`}>
                         {t.currencySymbol} {item.taxAmount.toFixed(2)}{' '}
                         <span className="text-[9.5px] text-slate-500">({item.taxRate}%)</span>
                       </td>
@@ -368,15 +421,21 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
                 )}
 
                 {/* Subtotal row */}
-                <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold text-[11px] text-slate-900">
-                  <td colSpan={5} className="py-2 px-3 text-right uppercase tracking-wider border-r border-slate-300">
+                <tr className={`${
+                  layout === 'classic'
+                    ? 'border-t-2 border-slate-400 bg-slate-100 font-bold text-[11px] text-slate-900'
+                    : layout === 'minimalist'
+                    ? 'border-t-2 border-slate-950 font-bold text-[11px] text-slate-900'
+                    : 'border-t-2 border-slate-300 bg-slate-50 font-bold text-[11px] text-slate-900'
+                }`}>
+                  <td colSpan={5} className={`py-2 px-3 text-right uppercase tracking-wider ${layout !== 'minimalist' ? 'border-r border-slate-300' : ''}`}>
                     Sub Total
                   </td>
-                  <td className="border-r border-slate-300"></td>
-                  <td className={`py-2 px-2 text-right ${fonts.monoFont} font-bold text-slate-950 border-r border-slate-300`}>
+                  <td className={layout !== 'minimalist' ? 'border-r border-slate-300' : ''}></td>
+                  <td className={`py-2 px-2 text-right ${fonts.monoFont} font-bold text-slate-950 ${layout !== 'minimalist' ? 'border-r border-slate-300' : ''}`}>
                     {t.currencySymbol} {doc.subtotal.toFixed(2)}
                   </td>
-                  <td className={`py-2 px-2 text-right ${fonts.monoFont} font-bold text-slate-950 border-r border-slate-300`}>
+                  <td className={`py-2 px-2 text-right ${fonts.monoFont} font-bold text-slate-950 ${layout !== 'minimalist' ? 'border-r border-slate-300' : ''}`}>
                     {t.currencySymbol} {doc.taxAmount.toFixed(2)}
                   </td>
                   <td className={`py-2 px-2 text-right ${fonts.monoFont} font-bold text-slate-950`}>
@@ -388,7 +447,13 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
           </div>
 
           {/* Total Items & Quantity Strip */}
-          <div className={`border ${colors.borderStandard.tailwindBorder} rounded-lg px-3 py-1.5 bg-slate-50 text-[10.5px] text-slate-700 font-semibold mb-3 shadow-2xs`}>
+          <div className={`${
+            layout === 'classic'
+              ? 'border border-slate-400 rounded-none px-3 py-1.5 bg-slate-50 text-[10.5px] text-slate-700 font-semibold mb-3'
+              : layout === 'minimalist'
+              ? 'border-y border-slate-200 px-1 py-1 text-[10.5px] text-slate-700 font-medium mb-3'
+              : `border ${colors.borderStandard.tailwindBorder} rounded-lg px-3 py-1.5 bg-slate-50 text-[10.5px] text-slate-700 font-semibold mb-3 shadow-2xs`
+          }`}>
             <span>TOTAL ITEMS: {doc.items.length}</span>
             <span className="mx-3 text-slate-300">|</span>
             <span>TOTAL QUANTITY: {t.totalQuantity} {doc.items[0]?.unit || 'PCS'}</span>
@@ -442,7 +507,13 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
             </div>
 
             {/* Right 5 Columns: Totals Box */}
-            <div className="sm:col-span-5 bg-white rounded-lg p-2 space-y-1.5 text-[11px] border border-slate-200">
+            <div className={`${
+              layout === 'classic'
+                ? 'sm:col-span-5 bg-white rounded-none p-2 space-y-1.5 text-[11px] border border-slate-400'
+                : layout === 'minimalist'
+                ? 'sm:col-span-5 bg-transparent p-1 space-y-1.5 text-[11px] border-l border-slate-200 pl-4'
+                : 'sm:col-span-5 bg-white rounded-lg p-2 space-y-1.5 text-[11px] border border-slate-200'
+            }`}>
               <div className="flex justify-between text-slate-700">
                 <span>Total Taxable Value:</span>
                 <span className={`${fonts.monoFont} font-semibold text-slate-900`}>
@@ -483,7 +554,13 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
                 </div>
               )}
 
-              <div className="flex justify-between items-center text-sm font-bold text-slate-950 border-t-2 border-b-2 border-slate-950 py-1.5 mt-1 bg-slate-100/70 px-1">
+              <div className={`flex justify-between items-center text-sm font-bold text-slate-950 ${
+                layout === 'classic'
+                  ? 'border-y-2 border-slate-950 py-1.5 mt-1 bg-slate-100 px-1'
+                  : layout === 'minimalist'
+                  ? 'border-t-2 border-slate-950 pt-2 mt-1 px-0'
+                  : 'border-t-2 border-b-2 border-slate-950 py-1.5 mt-1 bg-slate-100/70 px-1'
+              }`}>
                 <span>Grand Total:</span>
                 <span className={`${fonts.monoFont} text-base`}>{t.currencySymbol} {doc.grandTotal.toFixed(2)}</span>
               </div>
@@ -508,7 +585,13 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
           </div>
 
           {/* Declarations, Terms & Signatures Box */}
-          <div className="border border-slate-300 rounded-lg p-3 bg-white grid grid-cols-1 sm:grid-cols-12 gap-4 shadow-2xs">
+          <div className={`${
+            layout === 'classic'
+              ? 'border border-slate-400 rounded-none p-3 bg-white grid grid-cols-1 sm:grid-cols-12 gap-4'
+              : layout === 'minimalist'
+              ? 'border-t border-slate-200 pt-3 bg-transparent grid grid-cols-1 sm:grid-cols-12 gap-4'
+              : 'border border-slate-300 rounded-lg p-3 bg-white grid grid-cols-1 sm:grid-cols-12 gap-4 shadow-2xs'
+          }`}>
             {/* Terms & Certification (7 Columns) */}
             <div className="sm:col-span-7 space-y-2 border-b sm:border-b-0 sm:border-r border-slate-200 pb-3 sm:pb-0 sm:pr-3">
               <div>

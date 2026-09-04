@@ -158,7 +158,10 @@ export interface Document {
   authorizedSignatoryDesignation?: string;
   includeStamp?: boolean;
   includeSignature?: boolean;
+  templateStyle?: DocumentLayoutTemplate;
 }
+
+export type DocumentLayoutTemplate = 'minimalist' | 'modern' | 'classic';
 
 export interface ProductList {
   id: string;
@@ -236,6 +239,7 @@ export interface CompanyProfile {
   authorizedSignatoryName?: string; // e.g. "Sunil Kumar"
   authorizedSignatoryDesignation?: string; // e.g. "Authorized Signatory", "Director"
   defaultDispatchAddress?: DispatchAddress;
+  documentTemplate?: DocumentLayoutTemplate; // 'minimalist' | 'modern' | 'classic'
 }
 
 export interface DriveFileInfo {

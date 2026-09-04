@@ -1,5 +1,60 @@
-import { CompanyProfile, CurrencyConfig, Document, DocumentType } from '../types';
+import { CompanyProfile, CurrencyConfig, Document, DocumentType, DocumentLayoutTemplate } from '../types';
 import { formatAmountToWords, getStateDisplay } from '../utils/numberToWords';
+
+export interface LayoutTemplateOption {
+  id: DocumentLayoutTemplate;
+  name: string;
+  tagline: string;
+  description: string;
+  badge: string;
+  idealFor: string;
+  features: string[];
+}
+
+export const LAYOUT_TEMPLATES_CONFIG: Record<DocumentLayoutTemplate, LayoutTemplateOption> = {
+  modern: {
+    id: 'modern',
+    name: 'Modern Executive',
+    tagline: 'Balanced corporate layout with structured cards and blue accents',
+    description: 'Crisp dual cards for buyer and seller, high-contrast dark typography, 4-column metadata strip, full 9-column merchandise table, and dual signature zones with stamp integration.',
+    badge: 'Standard Corporate',
+    idealFor: 'B2B Trading, Corporate Merchandising & Manufacturing',
+    features: [
+      'Dual consignor & consignee cards with state and GSTIN display',
+      '4-column metadata strip (Document No, Date, Reference, Vehicle)',
+      'Structured 9-column merchandise table with tax breakdown',
+      'Integrated official rubber stamp and authorized signature zone'
+    ]
+  },
+  minimalist: {
+    id: 'minimalist',
+    name: 'Contemporary Minimalist',
+    tagline: 'Clean studio aesthetic with generous negative space and hairline rules',
+    description: 'Spacious, uncluttered layout removing heavy outer boxes and solid black divider lines in favor of subtle hairline rules, refined typography, borderless item table with single-line row rules, and clean totals.',
+    badge: 'Studio & Agency',
+    idealFor: 'Design Studios, IT Consultancies, Architecture & Modern Agencies',
+    features: [
+      'Light, borderless layout with subtle hairline dividers',
+      'Unboxed party details with elegant typographic contrast',
+      'Open item table with understated row rules and ample padding',
+      'Right-aligned sleek totals summary and discreet signature'
+    ]
+  },
+  classic: {
+    id: 'classic',
+    name: 'Classic Enterprise Grid',
+    tagline: 'High-density tabular layout optimized for statutory audits and maximum items',
+    description: 'Traditional enterprise accounting grid with solid borders, double separator lines, shaded column headers, dense line item spacing, and formal boxed legal declaration and signature blocks.',
+    badge: 'Enterprise & Audits',
+    idealFor: 'Wholesale, High-Volume Logistics, Parts Suppliers & Statutory Audits',
+    features: [
+      'Solid grid cells with full borders and double-line section dividers',
+      'High-density rows to fit more items on a single A4 page',
+      'Formal boxed Consignor and Consignee panels with statutory labels',
+      'Enterprise bottom remittance box and dual receiver sign-off'
+    ]
+  }
+};
 
 /**
  * Shared branding colors in multiple formats (Hex, RGB for jsPDF, and Tailwind classes).
@@ -262,6 +317,7 @@ export function getDocumentTypeConfig(
  * shared identically by both the on-screen preview and the PDF generator.
  */
 export interface ResolvedDocumentData {
+  layoutTemplate: DocumentLayoutTemplate;
   config: DocumentTypeConfig;
   consignorState: { name: string; code: string };
   consigneeState: { name: string; code: string };
@@ -295,12 +351,21 @@ export interface ResolvedDocumentData {
   remarksText: string;
 }
 
+export interface DocumentTemplateOverrides {
+  copyLabel?: string;
+  purposeText?: string;
+  watermarkText?: string;
+  layoutTemplate?: DocumentLayoutTemplate;
+}
+
 export function resolveDocumentTemplateData(
   doc: Document,
   company: CompanyProfile,
   currencies: CurrencyConfig[] = [],
-  overrides?: { copyLabel?: string; purposeText?: string; watermarkText?: string }
+  overrides?: DocumentTemplateOverrides
 ): ResolvedDocumentData {
+  const layoutTemplate: DocumentLayoutTemplate =
+    overrides?.layoutTemplate || doc.templateStyle || company.documentTemplate || 'modern';
   const config = getDocumentTypeConfig(doc, company, overrides);
 
   const consignorState = getStateDisplay(
@@ -374,6 +439,7 @@ export function resolveDocumentTemplateData(
     `${config.defaultPurpose} - Goods described above are dispatched for corporate merchandising operations.`;
 
   return {
+    layoutTemplate,
     config,
     consignorState,
     consigneeState,

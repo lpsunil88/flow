@@ -39,6 +39,7 @@ export const INITIAL_COMPANIES: CompanyProfile[] = [
     proformaPrefix: 'PI-',
     challanPrefix: 'DC-',
     terms: '1. Payment is due within 15 days of invoice date.\n2. Please mention the invoice number in the payment reference.\n3. Goods once sold are not returnable without prior authorization.',
+    documentTemplate: 'modern',
     stampUrl: '',
     signatureUrl: '',
     authorizedSignatoryName: 'Authorized Signatory',
