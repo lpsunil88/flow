@@ -12,7 +12,7 @@ import { uploadPdfToDrive, saveBillingDataToDrive } from './services/googleDrive
 import { generateDocumentPdfBlob } from './services/pdfGenerator';
 import { User as FirebaseUser } from 'firebase/auth';
 
-import { Navbar } from './components/Navbar';
+import { Sidebar } from './components/Sidebar';
 import { DashboardView } from './components/DashboardView';
 import { DocumentList } from './components/DocumentList';
 import { DocumentEditor } from './components/DocumentEditor';
@@ -578,9 +578,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans">
-      {/* Top Navbar with Multi-Company Switcher & Catalogs */}
-      <Navbar
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col md:flex-row font-sans">
+      {/* Sidebar Navigation */}
+      <Sidebar
         activeView={activeView}
         setActiveView={(v) => {
           setActiveView(v);
@@ -613,20 +613,66 @@ export default function App() {
         onGoogleSignOut={handleGoogleSignOut}
         isAuthenticating={isAuthenticating}
         businessName={company.name}
+        onCreateDocument={(type) => {
+          setCreatingDocType(type);
+          setEditingDoc(null);
+        }}
+        documentsCount={documents.length}
+        clientsCount={clients.length}
+        itemsCount={items.length}
       />
 
-      {/* Global Notification Banner */}
-      {globalBannerMsg && (
-        <div className="bg-slate-900 border-b border-indigo-500/40 text-white text-xs py-2 px-4 shadow-sm flex items-center justify-between animate-in fade-in">
-          <div className="max-w-7xl mx-auto flex items-center gap-2 w-full">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>{globalBannerMsg}</span>
-          </div>
-        </div>
-      )}
-
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 pb-32 sm:pb-28">
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Header Bar for Desktop */}
+        <header className="hidden md:flex items-center justify-between px-6 lg:px-8 py-3 bg-white border-b border-slate-200/90 sticky top-0 z-20 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <h1 className="text-sm lg:text-base font-bold text-slate-800 tracking-tight flex items-center gap-2">
+              {activeView === 'dashboard' && 'Financial Overview & Analytics'}
+              {activeView === 'documents' && 'Invoices, Proformas & Delivery Challans'}
+              {activeView === 'products' && 'Product Catalog & Price Lists'}
+              {activeView === 'clients' && 'Client Directory & Accounts'}
+              {activeView === 'settings' && 'Company Settings & Multi-Entity Management'}
+            </h1>
+            <span className="text-xs text-slate-300 font-medium">|</span>
+            <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
+              {company.name}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {!creatingDocType && !editingDoc && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={currentUser.role === 'auditor'}
+                  onClick={() => {
+                    setCreatingDocType('invoice');
+                    setEditingDoc(null);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg shadow-2xs transition disabled:opacity-50"
+                  title="Create New Tax Invoice"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>New Invoice</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </header>
+
+        {/* Global Notification Banner */}
+        {globalBannerMsg && (
+          <div className="bg-slate-900 border-b border-indigo-500/40 text-white text-xs py-2 px-6 shadow-sm flex items-center justify-between animate-in fade-in">
+            <div className="flex items-center gap-2 w-full">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{globalBannerMsg}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Main Content Body */}
+        <main className="flex-1 w-full mx-auto p-4 sm:p-6 lg:p-8 pb-32 sm:pb-28">
         {/* Editor Screen (when creating or editing a document) */}
         {creatingDocType || editingDoc ? (
           <DocumentEditor
@@ -744,6 +790,7 @@ export default function App() {
           </>
         )}
       </main>
+      </div>
 
       {/* Mobile Bottom Navigation Bar for on-the-go billing */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-30 px-2 py-1.5 flex items-center justify-around shadow-lg">
