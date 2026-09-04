@@ -5,12 +5,14 @@ import {
   Save, RefreshCw, CheckCircle2, UserCheck, Plus, Trash2, Key, 
   Upload, Image, Check, Palette, Sparkles, Loader2, Search, ExternalLink,
   Briefcase, Star, UserPlus, ShieldAlert, KeyRound, Lock, Eye, EyeOff,
-  LayoutTemplate, FileText, Truck, Receipt, CheckSquare, Layers, Columns, Grid
+  LayoutTemplate, FileText, Truck, Receipt, CheckSquare, Layers, Columns, Grid,
+  Stamp, PenTool, FileSignature, MapPin
 } from 'lucide-react';
 import { saveBillingDataToDrive, loadBillingDataFromDrive } from '../services/googleDrive';
 import { DOCUMENT_DESIGNS, DocumentDesign, INVOICE_THEMES, PROFORMA_THEMES, CHALLAN_THEMES } from '../services/themeEngine';
 import { CreateStaffModal } from './CreateStaffModal';
 import { DesignPreviewModal } from './DesignPreviewModal';
+import { generateSampleStamp, generateSampleSignature } from '../utils/stampSignature';
 
 interface SettingsViewProps {
   company: CompanyProfile;
@@ -63,6 +65,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   // Logo file input ref
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const stampFileInputRef = useRef<HTMLInputElement>(null);
+  const signatureFileInputRef = useRef<HTMLInputElement>(null);
 
   // New Company Modal State
   const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
@@ -195,6 +199,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     reader.onload = () => {
       const dataUrl = reader.result as string;
       setCompany(prev => ({ ...prev, logoUrl: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle Stamp file upload
+  const handleStampUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Stamp file size should be less than 2MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setCompany(prev => ({ ...prev, stampUrl: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle Signature file upload
+  const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Signature file size should be less than 2MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setCompany(prev => ({ ...prev, signatureUrl: dataUrl }));
     };
     reader.readAsDataURL(file);
   };
@@ -702,6 +742,400 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 />
               </div>
             </div>
+          </div>
+
+          {/* SECTION: OFFICIAL COMPANY STAMP & AUTHORIZED SIGNATORY */}
+          <div className="pt-4 border-t border-slate-200">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Stamp className="w-4 h-4 text-indigo-600" />
+                <span>Company Official Stamp & Authorized Signatory</span>
+              </h3>
+            </div>
+            <p className="text-slate-500 text-xs mb-4">
+              Upload your official company rubber stamp (seal) and authorized signature. These will be automatically rendered on all generated Invoices, Proformas, Delivery Challans, and downloadable PDFs.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Card 1: Company Stamp / Seal */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-xs text-slate-800">
+                    <Stamp className="w-4 h-4 text-blue-700" />
+                    <span>Official Company Rubber Stamp / Seal</span>
+                  </div>
+                  {company.stampUrl && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                      <Check className="w-3 h-3" /> Active
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="w-24 h-24 rounded-full border-2 border-dashed border-blue-300 bg-white flex items-center justify-center p-1.5 shrink-0 overflow-hidden shadow-2xs">
+                    {company.stampUrl ? (
+                      <img
+                        src={company.stampUrl}
+                        alt="Company Stamp"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="text-center text-slate-400 p-1">
+                        <Stamp className="w-8 h-8 mx-auto text-slate-300" />
+                        <span className="text-[9px] block leading-tight font-medium mt-1">No Stamp</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 flex-1">
+                    <input
+                      type="file"
+                      ref={stampFileInputRef}
+                      onChange={handleStampUpload}
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      className="hidden"
+                    />
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={!canEdit}
+                        onClick={() => stampFileInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 rounded-md text-xs font-semibold text-slate-700 shadow-2xs transition"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Upload Stamp</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={!canEdit}
+                        onClick={() => {
+                          const sample = generateSampleStamp(company.name);
+                          setCompany(prev => ({ ...prev, stampUrl: sample }));
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-md text-xs font-semibold border border-indigo-200 transition"
+                        title="Generate a realistic circular official seal"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Auto Sample Stamp</span>
+                      </button>
+
+                      {company.stampUrl && (
+                        <button
+                          type="button"
+                          disabled={!canEdit}
+                          onClick={() => setCompany(prev => ({ ...prev, stampUrl: '' }))}
+                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-md transition"
+                          title="Remove stamp"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="text-[11px] text-slate-400">
+                      Recommended: Transparent PNG or JPG circle seal (Max 2MB).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Authorized Signatory & Signature */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-xs text-slate-800">
+                    <FileSignature className="w-4 h-4 text-indigo-700" />
+                    <span>Authorized Signatory & Digital Signature</span>
+                  </div>
+                  {company.signatureUrl && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                      <Check className="w-3 h-3" /> Active
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Signatory Name</label>
+                    <input
+                      type="text"
+                      disabled={!canEdit}
+                      placeholder="e.g. Sunil Kumar"
+                      value={company.authorizedSignatoryName || ''}
+                      onChange={(e) => setCompany({ ...company, authorizedSignatoryName: e.target.value })}
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Designation</label>
+                    <input
+                      type="text"
+                      disabled={!canEdit}
+                      placeholder="e.g. Director / Partner"
+                      value={company.authorizedSignatoryDesignation || ''}
+                      onChange={(e) => setCompany({ ...company, authorizedSignatoryDesignation: e.target.value })}
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-md text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 pt-1">
+                  <div className="w-32 h-14 rounded-lg border-2 border-dashed border-indigo-200 bg-white flex items-center justify-center p-1 shrink-0 overflow-hidden shadow-2xs">
+                    {company.signatureUrl ? (
+                      <img
+                        src={company.signatureUrl}
+                        alt="Signature"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="text-center text-slate-400">
+                        <PenTool className="w-5 h-5 mx-auto text-slate-300" />
+                        <span className="text-[9px] block leading-tight font-medium mt-0.5">No Signature</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5 flex-1">
+                    <input
+                      type="file"
+                      ref={signatureFileInputRef}
+                      onChange={handleSignatureUpload}
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      className="hidden"
+                    />
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={!canEdit}
+                        onClick={() => signatureFileInputRef.current?.click()}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 rounded-md text-xs font-semibold text-slate-700 shadow-2xs transition"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Upload Sign</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={!canEdit}
+                        onClick={() => {
+                          const sample = generateSampleSignature(company.authorizedSignatoryName || 'Sunil Kumar');
+                          setCompany(prev => ({ ...prev, signatureUrl: sample }));
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-md text-xs font-semibold border border-indigo-200 transition"
+                        title="Generate cursive pen signature"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Auto Sample Sign</span>
+                      </button>
+
+                      {company.signatureUrl && (
+                        <button
+                          type="button"
+                          disabled={!canEdit}
+                          onClick={() => setCompany(prev => ({ ...prev, signatureUrl: '' }))}
+                          className="p-1 text-rose-500 hover:bg-rose-50 rounded-md transition"
+                          title="Remove signature"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION: DEFAULT PLACE OF DISPATCH ("DISPATCHED FROM") */}
+          <div className="pt-4 border-t border-slate-200 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-teal-600" />
+                  <span>Default Place of Dispatch ("Dispatched From")</span>
+                </h3>
+                <p className="text-slate-500 text-xs mt-0.5">
+                  Origin factory, logistics godown, or dispatch warehouse for GST compliance and delivery challans.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="inline-flex items-center gap-2 cursor-pointer bg-slate-100 hover:bg-slate-200/70 px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-800 transition">
+                  <input
+                    type="checkbox"
+                    disabled={!canEdit}
+                    checked={Boolean(company.defaultDispatchAddress?.enabled)}
+                    onChange={(e) =>
+                      setCompany({
+                        ...company,
+                        defaultDispatchAddress: {
+                          ...(company.defaultDispatchAddress || {}),
+                          enabled: e.target.checked,
+                        },
+                      })
+                    }
+                    className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500"
+                  />
+                  <span>Enable Custom Dispatch Origin</span>
+                </label>
+
+                {company.defaultDispatchAddress?.enabled && (
+                  <button
+                    type="button"
+                    disabled={!canEdit}
+                    onClick={() => {
+                      setCompany({
+                        ...company,
+                        defaultDispatchAddress: {
+                          enabled: true,
+                          name: `${company.name} Central Warehouse`,
+                          address: company.address,
+                          city: company.city,
+                          state: 'Maharashtra',
+                          stateCode: '27',
+                          pincode: '400001',
+                          phone: company.phone,
+                          taxId: company.taxId,
+                        },
+                      });
+                    }}
+                    className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium rounded border border-slate-300 shadow-2xs transition"
+                  >
+                    Copy from Registered Address
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {company.defaultDispatchAddress?.enabled && (
+              <div className="p-4 bg-teal-50/50 rounded-xl border border-teal-200 space-y-3 animate-in fade-in duration-150">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Warehouse / Plant Name</label>
+                    <input
+                      type="text"
+                      disabled={!canEdit}
+                      placeholder="e.g. Bhiwandi Logistics Hub, Unit 4"
+                      value={company.defaultDispatchAddress?.name || ''}
+                      onChange={(e) =>
+                        setCompany({
+                          ...company,
+                          defaultDispatchAddress: {
+                            ...(company.defaultDispatchAddress || {}),
+                            name: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Dispatch GSTIN / Tax ID</label>
+                    <input
+                      type="text"
+                      disabled={!canEdit}
+                      placeholder="e.g. 27ABCDE1234F1Z5"
+                      value={company.defaultDispatchAddress?.taxId || ''}
+                      onChange={(e) =>
+                        setCompany({
+                          ...company,
+                          defaultDispatchAddress: {
+                            ...(company.defaultDispatchAddress || {}),
+                            taxId: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Dispatch Contact Phone</label>
+                    <input
+                      type="text"
+                      disabled={!canEdit}
+                      placeholder="e.g. +91 98765 43210"
+                      value={company.defaultDispatchAddress?.phone || ''}
+                      onChange={(e) =>
+                        setCompany({
+                          ...company,
+                          defaultDispatchAddress: {
+                            ...(company.defaultDispatchAddress || {}),
+                            phone: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="sm:col-span-2">
+                    <label className="block font-semibold text-slate-700 mb-1">Dispatch Street Address</label>
+                    <input
+                      type="text"
+                      disabled={!canEdit}
+                      placeholder="Plot No. 42, MIDC Industrial Area"
+                      value={company.defaultDispatchAddress?.address || ''}
+                      onChange={(e) =>
+                        setCompany({
+                          ...company,
+                          defaultDispatchAddress: {
+                            ...(company.defaultDispatchAddress || {}),
+                            address: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">City / Hub</label>
+                    <input
+                      type="text"
+                      disabled={!canEdit}
+                      placeholder="e.g. Thane / Mumbai"
+                      value={company.defaultDispatchAddress?.city || ''}
+                      onChange={(e) =>
+                        setCompany({
+                          ...company,
+                          defaultDispatchAddress: {
+                            ...(company.defaultDispatchAddress || {}),
+                            city: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">PIN / Postal Code</label>
+                    <input
+                      type="text"
+                      disabled={!canEdit}
+                      placeholder="e.g. 421302"
+                      value={company.defaultDispatchAddress?.pincode || ''}
+                      onChange={(e) =>
+                        setCompany({
+                          ...company,
+                          defaultDispatchAddress: {
+                            ...(company.defaultDispatchAddress || {}),
+                            pincode: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-md"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

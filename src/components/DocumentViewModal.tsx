@@ -501,29 +501,85 @@ export const DocumentViewModal: React.FC<DocumentViewModalProps> = ({
                 </div>
               )}
 
-              {/* CLIENT / BILLING DETAILS PANEL */}
-              <div className={`grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 rounded-lg text-xs ${
+              {/* DISPATCHED FROM LOCATION BANNER (If custom origin location specified) */}
+              {doc.dispatchAddress?.enabled && doc.dispatchAddress.address && (
+                <div className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Truck className="w-4 h-4 text-slate-600 shrink-0" />
+                    <div>
+                      <span className="font-bold text-slate-800 uppercase tracking-wider text-[10px] block">
+                        Dispatched From (Origin / Warehouse)
+                      </span>
+                      <span className="font-medium text-slate-900">
+                        {doc.dispatchAddress.name ? `${doc.dispatchAddress.name} — ` : ''}
+                        {doc.dispatchAddress.address}
+                        {doc.dispatchAddress.city ? `, ${doc.dispatchAddress.city}` : ''}
+                        {doc.dispatchAddress.state ? `, ${doc.dispatchAddress.state}` : ''}
+                        {doc.dispatchAddress.pincode ? ` - ${doc.dispatchAddress.pincode}` : ''}
+                      </span>
+                    </div>
+                  </div>
+                  {doc.dispatchAddress.taxId && (
+                    <div className="text-[11px] font-mono text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 shrink-0">
+                      Dispatch GSTIN: {doc.dispatchAddress.taxId}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* CLIENT / BILLING & SHIPPING DETAILS PANEL */}
+              <div className={`grid grid-cols-1 ${doc.shippingAddress?.enabled ? 'md:grid-cols-3' : 'sm:grid-cols-2'} gap-6 p-4 rounded-lg text-xs ${
                 design.layoutType === 'classic-corporate' || design.layoutType === 'tender-formal'
                   ? 'border border-slate-400 bg-white'
                   : 'border border-slate-200 bg-slate-50'
               }`}>
                 <div>
                   <span className="font-bold uppercase tracking-wider text-slate-500 text-[11px] block mb-1">
-                    Bill To / Consignee
+                    Bill To (Buyer)
                   </span>
                   <div className="font-bold text-sm text-slate-900">{doc.clientCompany || doc.clientName}</div>
-                  <div className="text-slate-600 mt-0.5">Attn: {doc.clientName}</div>
+                  {doc.clientCompany && <div className="text-slate-600 mt-0.5">Attn: {doc.clientName}</div>}
                   <div className="text-slate-600">{doc.clientAddress}</div>
                   <div className="text-slate-500 mt-1">Email: {doc.clientEmail}</div>
                   <div className="text-slate-500">Phone: {doc.clientPhone}</div>
+                  {doc.clientTaxId && (
+                    <div className="text-slate-700 font-mono mt-1">GSTIN: {doc.clientTaxId}</div>
+                  )}
                 </div>
 
-                <div className="sm:text-right sm:border-l sm:border-slate-200 sm:pl-6 space-y-1">
+                {doc.shippingAddress?.enabled && (
+                  <div className="border-t sm:border-t-0 sm:border-l border-slate-200 sm:pl-4">
+                    <span className="font-bold uppercase tracking-wider text-indigo-600 text-[11px] block mb-1 flex items-center gap-1">
+                      <Truck className="w-3.5 h-3.5" />
+                      Ship To (Consignee)
+                    </span>
+                    <div className="font-bold text-sm text-slate-900">
+                      {doc.shippingAddress.company || doc.shippingAddress.name || doc.clientCompany || doc.clientName}
+                    </div>
+                    {doc.shippingAddress.name && doc.shippingAddress.company && (
+                      <div className="text-slate-600 mt-0.5">Attn: {doc.shippingAddress.name}</div>
+                    )}
+                    <div className="text-slate-600">{doc.shippingAddress.address}</div>
+                    <div className="text-slate-600">
+                      {[doc.shippingAddress.city, doc.shippingAddress.state, doc.shippingAddress.pincode]
+                        .filter(Boolean)
+                        .join(', ')}
+                    </div>
+                    {doc.shippingAddress.phone && (
+                      <div className="text-slate-500 mt-1">Phone: {doc.shippingAddress.phone}</div>
+                    )}
+                    {doc.shippingAddress.taxId && (
+                      <div className="text-slate-700 font-mono mt-1">GSTIN: {doc.shippingAddress.taxId}</div>
+                    )}
+                  </div>
+                )}
+
+                <div className={`space-y-1 ${doc.shippingAddress?.enabled ? 'border-t md:border-t-0 md:border-l border-slate-200 md:pl-4 md:text-right' : 'sm:text-right sm:border-l sm:border-slate-200 sm:pl-6'}`}>
                   <span className="font-bold uppercase tracking-wider text-slate-500 text-[11px] block mb-1">
                     Transaction Details
                   </span>
                   <div>
-                    <span className="text-slate-500">Customer Tax ID / GSTIN:</span>{' '}
+                    <span className="text-slate-500">Customer Tax ID:</span>{' '}
                     <span className="font-mono font-medium text-slate-800">{doc.clientTaxId || 'N/A'}</span>
                   </div>
                   <div>
@@ -717,14 +773,34 @@ export const DocumentViewModal: React.FC<DocumentViewModalProps> = ({
                 </div>
                 <div className="sm:text-right flex flex-col justify-end items-start sm:items-end pt-4 sm:pt-0">
                   <span className="font-bold text-slate-800 text-xs">For {company.name}</span>
-                  <div className={`w-40 h-14 mt-2 ${
-                    design.layoutType === 'classic-corporate' || design.layoutType === 'tender-formal'
-                      ? 'border border-dashed border-slate-400 bg-slate-50/50 flex items-center justify-center text-[10px] text-slate-400 italic'
-                      : 'border-b border-slate-300'
-                  }`}>
-                    {(design.layoutType === 'classic-corporate' || design.layoutType === 'tender-formal') && 'Official Seal / Signature'}
+                  <div className="relative flex items-center justify-end my-1 min-h-[60px] w-48">
+                    {/* Official Stamp */}
+                    {doc.includeStamp !== false && (doc.stampUrl || company.stampUrl) && (
+                      <img
+                        src={doc.stampUrl || company.stampUrl}
+                        alt="Company Stamp"
+                        className="w-16 h-16 object-contain opacity-85 -mr-4 pointer-events-none z-0"
+                      />
+                    )}
+                    {/* Authorized Signature */}
+                    {doc.includeSignature !== false && (doc.signatureUrl || company.signatureUrl) ? (
+                      <img
+                        src={doc.signatureUrl || company.signatureUrl}
+                        alt="Authorized Signature"
+                        className="h-12 max-w-[140px] object-contain relative z-10"
+                      />
+                    ) : (
+                      <div className="w-36 border-b border-slate-300 border-dashed h-8"></div>
+                    )}
                   </div>
-                  <span className="text-[11px] text-slate-500 mt-1">Authorized Signatory</span>
+                  <div className="text-[11px] font-semibold text-slate-800">
+                    {doc.authorizedSignatoryName || company.authorizedSignatoryName || 'Authorized Signatory'}
+                  </div>
+                  {(doc.authorizedSignatoryDesignation || company.authorizedSignatoryDesignation) && (
+                    <div className="text-[10px] text-slate-500">
+                      {doc.authorizedSignatoryDesignation || company.authorizedSignatoryDesignation}
+                    </div>
+                  )}
                 </div>
               </div>
 

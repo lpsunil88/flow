@@ -244,6 +244,35 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
 
   y += 40;
 
+  // Dispatched From Banner (if custom dispatch location specified)
+  const hasDispatch = Boolean(
+    doc.dispatchAddress?.enabled && (doc.dispatchAddress.name || doc.dispatchAddress.address)
+  );
+  if (hasDispatch) {
+    const dName = doc.dispatchAddress?.name || 'Central Dispatch';
+    const dAddr = doc.dispatchAddress?.address || '';
+    const dCity = [doc.dispatchAddress?.city, doc.dispatchAddress?.state, doc.dispatchAddress?.pincode]
+      .filter(Boolean)
+      .join(', ');
+    const dTax = doc.dispatchAddress?.taxId ? ` | GSTIN: ${doc.dispatchAddress.taxId}` : '';
+    const dPhone = doc.dispatchAddress?.phone ? ` | Tel: ${doc.dispatchAddress.phone}` : '';
+
+    pdf.setFillColor(248, 250, 252);
+    pdf.setDrawColor(203, 213, 225);
+    pdf.rect(margin, y, contentWidth, 8, 'FD');
+    pdf.setFont(docFont, 'bold');
+    pdf.setFontSize(7);
+    pdf.setTextColor(71, 85, 105);
+    pdf.text('DISPATCHED FROM:', margin + 3, y + 5.5);
+
+    pdf.setFont(docFont, 'normal');
+    pdf.setTextColor(30, 41, 59);
+    const dispatchStr = `${dName} — ${dAddr} ${dCity}${dTax}${dPhone}`;
+    const truncatedDispatch = pdf.splitTextToSize(dispatchStr, contentWidth - 36);
+    pdf.text(truncatedDispatch[0] || dispatchStr, margin + 34, y + 5.5);
+    y += 11;
+  }
+
   // Challan Delivery info if challan
   if (doc.type === 'challan' && doc.challanDetails) {
     pdf.setFillColor(241, 245, 249);
@@ -262,8 +291,64 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
     y += 18;
   }
 
-  // Bill To / Client Details Box
-  if (isMinimal) {
+  const hasShipping = Boolean(
+    doc.shippingAddress?.enabled && (doc.shippingAddress.name || doc.shippingAddress.address || doc.shippingAddress.company)
+  );
+
+  // Bill To & Ship To / Client Details Box
+  if (hasShipping) {
+    // Two side-by-side columns: BILLED TO (Left) & SHIPPED TO (Right)
+    const boxW = contentWidth / 2 - 2;
+    pdf.setDrawColor(isClassic ? 71 : 226, isClassic ? 85 : 232, isClassic ? 105 : 240);
+    pdf.setFillColor(isClassic ? 255 : 250, isClassic ? 255 : 250, isClassic ? 255 : 250);
+    pdf.rect(margin, y, boxW, 34, isClassic ? 'FD' : 'FD');
+    pdf.rect(margin + boxW + 4, y, boxW, 34, isClassic ? 'FD' : 'FD');
+
+    // Left: BILLED TO
+    pdf.setFont(docFont, 'bold');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(100, 116, 139);
+    pdf.text('BILLED TO (BUYER):', margin + 4, y + 5.5);
+
+    pdf.setFont(docFont, 'bold');
+    pdf.setFontSize(9);
+    pdf.setTextColor(15, 23, 42);
+    pdf.text(doc.clientCompany || doc.clientName, margin + 4, y + 11);
+
+    pdf.setFont(docFont, 'normal');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(71, 85, 105);
+    pdf.text(`Attn: ${doc.clientName}`, margin + 4, y + 16);
+    pdf.text(`Address: ${doc.clientAddress}`, margin + 4, y + 21);
+    pdf.text(`GSTIN / Tax ID: ${doc.clientTaxId || 'N/A'}`, margin + 4, y + 26);
+    pdf.text(`Tel: ${doc.clientPhone} • ${doc.clientEmail}`, margin + 4, y + 31);
+
+    // Right: SHIPPED TO (CONSIGNEE)
+    const rightX = margin + boxW + 8;
+    pdf.setFont(docFont, 'bold');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(100, 116, 139);
+    pdf.text('SHIPPED TO (CONSIGNEE):', rightX, y + 5.5);
+
+    pdf.setFont(docFont, 'bold');
+    pdf.setFontSize(9);
+    pdf.setTextColor(15, 23, 42);
+    const shipTitle = doc.shippingAddress?.company || doc.shippingAddress?.name || doc.clientCompany || doc.clientName;
+    pdf.text(shipTitle, rightX, y + 11);
+
+    pdf.setFont(docFont, 'normal');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(71, 85, 105);
+    const shipContact = doc.shippingAddress?.name ? `Attn: ${doc.shippingAddress.name}` : `Attn: ${doc.clientName}`;
+    pdf.text(shipContact, rightX, y + 16);
+    const shipFullAddr = [doc.shippingAddress?.address, doc.shippingAddress?.city, doc.shippingAddress?.state, doc.shippingAddress?.pincode].filter(Boolean).join(', ');
+    const addrLines = pdf.splitTextToSize(`Address: ${shipFullAddr || doc.clientAddress}`, boxW - 8);
+    pdf.text(addrLines[0] || '', rightX, y + 21);
+    pdf.text(`Consignee GSTIN: ${doc.shippingAddress?.taxId || doc.clientTaxId || 'N/A'}`, rightX, y + 26);
+    pdf.text(`Tel: ${doc.shippingAddress?.phone || doc.clientPhone}`, rightX, y + 31);
+
+    y += 38;
+  } else if (isMinimal) {
     // Frameless open whitespace layout for Minimal style
     pdf.setFont(docFont, 'bold');
     pdf.setFontSize(8);
@@ -663,29 +748,70 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
   const termLines = pdf.splitTextToSize(termsText, contentWidth - 65);
   pdf.text(termLines, margin, y + 9);
 
-  // Authorized Signatory
-  const sigX = pageWidth - margin - 50;
+  // Authorized Signatory & Official Stamp
+  const sigBoxWidth = 54;
+  const sigX = pageWidth - margin - sigBoxWidth;
   pdf.setFont(docFont, 'bold');
   pdf.setFontSize(8);
   pdf.setTextColor(15, 23, 42);
-  pdf.text('For ' + company.name, sigX, y + 4);
+  pdf.text('For ' + company.name, sigX + sigBoxWidth / 2, y + 4, { align: 'center' });
 
-  if (isClassic) {
-    // Stamp Box for Classic style
+  const stampUrl = (doc.includeStamp !== false && (doc.stampUrl || company.stampUrl))
+    ? (doc.stampUrl || company.stampUrl)
+    : null;
+  const signatureUrl = (doc.includeSignature !== false && (doc.signatureUrl || company.signatureUrl))
+    ? (doc.signatureUrl || company.signatureUrl)
+    : null;
+  const signatoryName = doc.authorizedSignatoryName || company.authorizedSignatoryName || 'Authorized Signatory';
+  const signatoryDesignation = doc.authorizedSignatoryDesignation || company.authorizedSignatoryDesignation || '';
+
+  // Draw Official Stamp if available
+  if (stampUrl) {
+    try {
+      pdf.addImage(stampUrl, 'PNG', sigX - 25, y + 5, 24, 24);
+    } catch {
+      try {
+        pdf.addImage(stampUrl, 'JPEG', sigX - 25, y + 5, 24, 24);
+      } catch (err) {
+        console.warn('Could not add stamp image to PDF', err);
+      }
+    }
+  }
+
+  // Draw Signature image if available
+  if (signatureUrl) {
+    try {
+      pdf.addImage(signatureUrl, 'PNG', sigX + 5, y + 6, 44, 18);
+    } catch {
+      try {
+        pdf.addImage(signatureUrl, 'JPEG', sigX + 5, y + 6, 44, 18);
+      } catch (err) {
+        console.warn('Could not add signature image to PDF', err);
+      }
+    }
+  } else if (isClassic) {
+    // Stamp Box for Classic style if no custom image
     pdf.setDrawColor(148, 163, 184);
-    pdf.rect(sigX + 10, y + 8, 28, 14, 'S');
+    pdf.rect(sigX + 10, y + 8, 34, 15, 'S');
     pdf.setFont(docFont, 'italic');
     pdf.setFontSize(6.5);
     pdf.setTextColor(148, 163, 184);
-    pdf.text('[ OFFICIAL SEAL ]', sigX + 13, y + 16);
+    pdf.text('[ OFFICIAL SEAL ]', sigX + 27, y + 17, { align: 'center' });
   }
 
   pdf.setDrawColor(203, 213, 225);
-  pdf.line(sigX, y + 26, sigX + 50, y + 26);
-  pdf.setFont(docFont, 'normal');
+  pdf.line(sigX, y + 26, sigX + sigBoxWidth, y + 26);
+  pdf.setFont(docFont, 'bold');
   pdf.setFontSize(7.5);
-  pdf.setTextColor(100, 116, 139);
-  pdf.text('Authorized Signatory', sigX + 10, y + 30);
+  pdf.setTextColor(30, 41, 59);
+  pdf.text(signatoryName, sigX + sigBoxWidth / 2, y + 29.5, { align: 'center' });
+
+  if (signatoryDesignation) {
+    pdf.setFont(docFont, 'normal');
+    pdf.setFontSize(6.5);
+    pdf.setTextColor(100, 116, 139);
+    pdf.text(signatoryDesignation, sigX + sigBoxWidth / 2, y + 33, { align: 'center' });
+  }
 
   // Footer Note
   pdf.setFont(docFont, 'italic');

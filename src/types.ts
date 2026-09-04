@@ -20,6 +20,33 @@ export interface StaffUser {
   status?: 'active' | 'inactive';
 }
 
+export interface ShippingAddress {
+  enabled?: boolean;
+  name?: string; // Consignee / Receiver Person Name
+  company?: string; // Consignee Company Name
+  address?: string; // Delivery Street Address
+  city?: string;
+  state?: string;
+  stateCode?: string;
+  pincode?: string;
+  country?: string;
+  phone?: string;
+  taxId?: string; // Consignee GSTIN
+}
+
+export interface DispatchAddress {
+  enabled?: boolean;
+  name?: string; // Warehouse / Plant / Dispatch Center Name
+  address?: string; // Dispatch Street Address
+  city?: string;
+  state?: string;
+  stateCode?: string;
+  pincode?: string;
+  country?: string;
+  phone?: string;
+  taxId?: string; // Dispatch Location GSTIN
+}
+
 export interface Client {
   id: string;
   companyId?: string; // Optional company association for multi-company isolation
@@ -33,6 +60,7 @@ export interface Client {
   taxId: string; // GSTIN / VAT ID / Tax Reg
   currency: string;
   notes?: string;
+  shippingAddress?: ShippingAddress;
   totalBilled: number;
   outstandingBalance: number;
   createdAt: string;
@@ -122,6 +150,14 @@ export interface Document {
   designId?: string;
   invoiceTemplate?: InvoiceTemplate;
   template?: InvoiceTemplate;
+  shippingAddress?: ShippingAddress;
+  dispatchAddress?: DispatchAddress;
+  stampUrl?: string;
+  signatureUrl?: string;
+  authorizedSignatoryName?: string;
+  authorizedSignatoryDesignation?: string;
+  includeStamp?: boolean;
+  includeSignature?: boolean;
 }
 
 export type InvoiceTemplate = 'Modern' | 'Classic' | 'Minimal';
@@ -142,6 +178,7 @@ export interface ProductList {
 export interface Item {
   id: string;
   name: string;
+  sku?: string;
   description: string;
   hsnCode: string;
   unit: string;
@@ -153,6 +190,7 @@ export interface Item {
   companyId?: string;
   productListIds?: string[]; // IDs of Product Lists / Catalogs this item is assigned to
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CurrencyConfig {
@@ -196,6 +234,11 @@ export interface CompanyProfile {
   defaultProformaDesign?: string;
   defaultChallanDesign?: string;
   defaultInvoiceTemplate?: InvoiceTemplate;
+  stampUrl?: string; // Company Official Stamp/Seal Data URL or link
+  signatureUrl?: string; // Authorized Signatory Signature Data URL or link
+  authorizedSignatoryName?: string; // e.g. "Sunil Kumar"
+  authorizedSignatoryDesignation?: string; // e.g. "Authorized Signatory", "Director"
+  defaultDispatchAddress?: DispatchAddress;
 }
 
 export interface DriveFileInfo {
