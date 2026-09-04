@@ -537,6 +537,7 @@ export const CHALLAN_THEMES: DocumentTheme[] = [
 export const ALL_THEMES = [...INVOICE_THEMES, ...PROFORMA_THEMES, ...CHALLAN_THEMES];
 
 export type DesignLayoutType =
+  | 'corporate-merchandise-a4'
   | 'modern-minimal'
   | 'classic-corporate'
   | 'executive-split'
@@ -559,6 +560,23 @@ export interface DocumentDesign {
 }
 
 export const DOCUMENT_DESIGNS: DocumentDesign[] = [
+  {
+    id: 'corporate-merchandise-a4',
+    name: 'Standard A4 GST & Merchandising',
+    category: 'all',
+    layoutType: 'corporate-merchandise-a4',
+    badge: 'Official A4',
+    description: 'Official A4 corporate merchandising and GST format matching statutory tax invoices, proformas, and delivery challans with dual consignor/consignee boxes, LR/GR bar, and authorized signatory blocks.',
+    idealFor: 'GST Tax Invoices, Delivery Challans, Corporate Merchandising, Proformas & Consignment Dispatch',
+    previewFeatures: [
+      'Standard A4 210mm x 297mm high-precision print layout',
+      'Dual Consignor and Consignee cards with GST State codes',
+      'Logistics transport details bar (Mode, Transporter, LR/GR)',
+      'Itemized HSN/SAC table with totals row and statutory Rule 55 / Sec 31 declarations',
+      'Dual Receiver & Authorized Signatory blocks with amount in words'
+    ],
+    theme: INVOICE_THEMES[1], // classic-corporate navy
+  },
   {
     id: 'modern-minimal',
     name: 'Modern Minimalist',
@@ -710,14 +728,11 @@ export function getDesignForDocument(
     }
   }
 
-  // Fallback defaults per document type
-  if (docType === 'challan') {
-    return DOCUMENT_DESIGNS.find((d) => d.id === 'logistics-dispatch') || DOCUMENT_DESIGNS[5];
-  }
-  if (docType === 'proforma') {
-    return DOCUMENT_DESIGNS.find((d) => d.id === 'creative-bold') || DOCUMENT_DESIGNS[0];
-  }
-  return DOCUMENT_DESIGNS[0]; // Modern Minimalist
+  // Fallback defaults per document type: default to Official Standard A4 Merchandising
+  const a4Design = DOCUMENT_DESIGNS.find((d) => d.id === 'corporate-merchandise-a4');
+  if (a4Design) return a4Design;
+
+  return DOCUMENT_DESIGNS[0];
 }
 
 export function getThemeForDocument(

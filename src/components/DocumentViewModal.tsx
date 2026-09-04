@@ -3,6 +3,7 @@ import { CompanyProfile, CurrencyConfig, Document, StaffUser, InvoiceTemplate } 
 import { formatCurrency, downloadDocumentPdf, generateDocumentPdfBlob } from '../services/pdfGenerator';
 import { uploadPdfToDrive } from '../services/googleDrive';
 import { DOCUMENT_DESIGNS, getDesignForDocument, DocumentDesign } from '../services/themeEngine';
+import { A4DocumentSheet } from './A4DocumentSheet';
 import { 
   X, Download, CloudUpload, ExternalLink, Send, CreditCard, 
   FileCheck, Truck, Printer, CheckCircle2, AlertCircle, RefreshCw, Palette, Building2,
@@ -59,7 +60,7 @@ export const DocumentViewModal: React.FC<DocumentViewModalProps> = ({
       : 'Modern');
 
   const handleTemplateSelect = (template: InvoiceTemplate) => {
-    let targetDesignId = 'executive-split';
+    let targetDesignId = 'corporate-merchandise-a4';
     if (template === 'Classic') targetDesignId = 'classic-corporate';
     if (template === 'Minimal') targetDesignId = 'modern-minimal';
 
@@ -130,19 +131,23 @@ export const DocumentViewModal: React.FC<DocumentViewModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-auto overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/75 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl my-auto overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150 print:border-none print:shadow-none print:max-w-none print:w-full print:rounded-none">
         
         {/* Top Control Bar */}
-        <div className="px-4 sm:px-6 py-3.5 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 sticky top-0 z-10">
+        <div className="px-4 sm:px-6 py-3 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 sticky top-0 z-20 no-print">
           <div className="flex items-center gap-2">
             <span className={`px-2.5 py-1 text-xs font-bold uppercase rounded-md tracking-wider ${theme.web.badgeBg} ${theme.web.badgeText}`}>
               {doc.type === 'invoice' ? 'Tax Invoice' : doc.type === 'proforma' ? 'Proforma Invoice' : 'Delivery Challan'}
             </span>
-            <span className="font-mono text-sm font-semibold">{doc.documentNumber}</span>
+            <span className="font-mono text-sm font-semibold text-slate-200">{doc.documentNumber}</span>
+            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-blue-400 bg-blue-950/60 border border-blue-800 px-2 py-0.5 rounded">
+              <FileText className="w-3 h-3" />
+              <span>A4 (210×297mm)</span>
+            </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center flex-wrap gap-2">
             {/* Visual Style Template Switcher (Modern / Classic / Minimal) */}
             <div className="flex items-center bg-slate-800 p-0.5 rounded-lg border border-slate-700 text-xs">
               {(['Modern', 'Classic', 'Minimal'] as const).map((tmpl) => {
@@ -181,10 +186,20 @@ export const DocumentViewModal: React.FC<DocumentViewModalProps> = ({
               </select>
             </div>
 
+            {/* Print A4 Sheet */}
+            <button
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700"
+              title="Print standard A4 sheet"
+            >
+              <Printer className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Print</span>
+            </button>
+
             {/* Download PDF */}
             <button
               onClick={handleDownloadPdf}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700"
               title="Download PDF locally"
             >
               <Download className="w-3.5 h-3.5 text-indigo-400" />
@@ -195,7 +210,7 @@ export const DocumentViewModal: React.FC<DocumentViewModalProps> = ({
             <button
               onClick={handleSyncToDrive}
               disabled={isUploadingToDrive}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700"
               title="Store PDF on your Google Drive"
             >
               {isUploadingToDrive ? (
@@ -274,10 +289,16 @@ export const DocumentViewModal: React.FC<DocumentViewModalProps> = ({
         )}
 
         {/* Document Body (Printable Sheet Layout) */}
-        <div className="p-4 sm:p-8 max-h-[80vh] overflow-y-auto bg-slate-100 font-sans">
+        <div className="p-3 sm:p-6 md:p-8 max-h-[82vh] overflow-y-auto bg-slate-200/90 font-sans print:p-0 print:m-0 print:bg-white print:max-h-none print:overflow-visible flex justify-center">
           
-          {/* THERMAL POS RETAIL SLIP LAYOUT */}
-          {design.layoutType === 'thermal-slip' ? (
+          {/* OFFICIAL A4 MERCHANDISING & GST FORMAT */}
+          {design.layoutType === 'corporate-merchandise-a4' ? (
+            <A4DocumentSheet
+              document={doc}
+              company={company}
+              currencies={currencies}
+            />
+          ) : design.layoutType === 'thermal-slip' ? (
             <div className="max-w-md mx-auto bg-white p-6 shadow-md border-2 border-dashed border-slate-400 font-mono text-xs text-slate-800 space-y-4 rounded-sm">
               <div className="text-center pb-3 border-b border-dashed border-slate-400">
                 <h1 className="text-base font-bold uppercase tracking-wider">{company.name}</h1>
@@ -350,12 +371,12 @@ export const DocumentViewModal: React.FC<DocumentViewModalProps> = ({
               </div>
             </div>
           ) : (
-            /* ALL STANDARD SHEET DESIGNS */
-            <div className={`max-w-3xl mx-auto bg-white shadow-sm rounded-lg text-slate-800 ${
+            /* ALL STANDARD SHEET DESIGNS FORMATTED IN A4 SHEET DIMENSIONS */
+            <div className={`w-full max-w-[210mm] min-h-[297mm] mx-auto bg-white shadow-lg rounded-sm text-slate-800 ${
               design.layoutType === 'classic-corporate' || design.layoutType === 'tender-formal'
                 ? 'border-2 border-slate-700 p-6 sm:p-8'
                 : `border ${theme.web.cardBorder} p-6 sm:p-10`
-            } ${design.layoutType === 'tender-formal' ? 'font-serif' : ''} space-y-6`}>
+            } ${design.layoutType === 'tender-formal' ? 'font-serif' : ''} space-y-6 box-border print:border-none print:shadow-none print:p-0 print:w-full print:max-w-none`}>
               
               {/* EXECUTIVE SPLIT: FULL-WIDTH TOP ACCENT BANNER */}
               {design.layoutType === 'executive-split' && (

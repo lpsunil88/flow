@@ -1352,7 +1352,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 <select
                   disabled={!canEdit}
-                  value={company.defaultInvoiceDesign || company.invoiceTheme || 'design-classic-corporate'}
+                  value={company.defaultInvoiceDesign || company.invoiceTheme || 'corporate-merchandise-a4'}
                   onChange={(e) => handleSetDefaultDesign('invoice', e.target.value)}
                   className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white font-medium focus:ring-2 focus:ring-indigo-500 text-xs"
                 >
@@ -1365,7 +1365,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 {(() => {
                   const curr = DOCUMENT_DESIGNS.find(
-                    (d) => d.id === (company.defaultInvoiceDesign || company.invoiceTheme || 'design-classic-corporate')
+                    (d) => d.id === (company.defaultInvoiceDesign || company.invoiceTheme || 'corporate-merchandise-a4')
                   ) || DOCUMENT_DESIGNS[0];
                   return (
                     <div className="pt-1 flex items-center justify-between">
@@ -1545,14 +1545,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             {DOCUMENT_DESIGNS.filter((d) => {
               if (designFilter === 'formal') return d.layoutType === 'classic-corporate' || d.layoutType === 'tender-formal';
               if (designFilter === 'modern') return d.layoutType === 'executive-split' || d.layoutType === 'modern-minimal' || d.layoutType === 'creative-bold';
-              if (designFilter === 'gst') return d.layoutType === 'tender-formal' || d.layoutType === 'compact-grid';
+              if (designFilter === 'gst') return d.layoutType === 'tender-formal' || d.layoutType === 'compact-grid' || d.layoutType === 'corporate-merchandise-a4';
               if (designFilter === 'logistics') return d.layoutType === 'logistics-dispatch';
               if (designFilter === 'pos') return d.layoutType === 'thermal-slip';
               return true;
             }).map((d) => {
-              const isDefaultInv = (company.defaultInvoiceDesign || company.invoiceTheme || 'design-classic-corporate') === d.id;
-              const isDefaultPro = (company.defaultProformaDesign || company.proformaTheme || 'design-modern-minimal') === d.id;
-              const isDefaultCha = (company.defaultChallanDesign || company.challanTheme || 'design-logistics-dispatch') === d.id;
+              const isDefaultInv = (company.defaultInvoiceDesign || company.invoiceTheme || 'corporate-merchandise-a4') === d.id;
+              const isDefaultPro = (company.defaultProformaDesign || company.proformaTheme || 'corporate-merchandise-a4') === d.id;
+              const isDefaultCha = (company.defaultChallanDesign || company.challanTheme || 'corporate-merchandise-a4') === d.id;
 
               return (
                 <div

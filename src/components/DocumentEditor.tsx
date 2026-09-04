@@ -79,10 +79,10 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   // Document Design Selection
   const defaultDesignForType =
     docType === 'invoice'
-      ? (initialInvoiceTemplate === 'Classic' ? 'classic-corporate' : initialInvoiceTemplate === 'Minimal' ? 'modern-minimal' : company.defaultInvoiceDesign || company.invoiceTheme || 'executive-split')
+      ? (company.defaultInvoiceDesign || 'corporate-merchandise-a4')
       : docType === 'proforma'
-      ? company.defaultProformaDesign || company.proformaTheme || 'design-modern-minimal'
-      : company.defaultChallanDesign || company.challanTheme || 'design-logistics-dispatch';
+      ? (company.defaultProformaDesign || 'corporate-merchandise-a4')
+      : (company.defaultChallanDesign || 'corporate-merchandise-a4');
 
   const [designId, setDesignId] = useState<string>(
     initialDocument?.designId || initialDocument?.theme || defaultDesignForType
@@ -92,11 +92,11 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   useEffect(() => {
     if (!initialDocument?.designId && !initialDocument?.theme) {
       if (docType === 'invoice') {
-        setDesignId(company.defaultInvoiceDesign || company.invoiceTheme || 'design-classic-corporate');
+        setDesignId(company.defaultInvoiceDesign || 'corporate-merchandise-a4');
       } else if (docType === 'proforma') {
-        setDesignId(company.defaultProformaDesign || company.proformaTheme || 'design-modern-minimal');
+        setDesignId(company.defaultProformaDesign || 'corporate-merchandise-a4');
       } else {
-        setDesignId(company.defaultChallanDesign || company.challanTheme || 'design-logistics-dispatch');
+        setDesignId(company.defaultChallanDesign || 'corporate-merchandise-a4');
       }
     }
   }, [docType, company]);
