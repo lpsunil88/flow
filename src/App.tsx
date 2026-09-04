@@ -24,6 +24,7 @@ import { ItemManagement } from './components/ItemManagement';
 import { SettingsView } from './components/SettingsView';
 import { LoginPage } from './components/LoginPage';
 import { BottomActionDock } from './components/BottomActionDock';
+import { GoogleAuthHelpModal, AuthErrorInfo } from './components/GoogleAuthHelpModal';
 
 import { LayoutDashboard, FileText, Users, Settings, Plus, Cloud, CheckCircle2, Boxes } from 'lucide-react';
 
@@ -152,6 +153,8 @@ export default function App() {
   const [driveAccessToken, setDriveAccessToken] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [globalBannerMsg, setGlobalBannerMsg] = useState<string | null>(null);
+  const [authHelpModalOpen, setAuthHelpModalOpen] = useState(false);
+  const [authErrorInfo, setAuthErrorInfo] = useState<AuthErrorInfo | null>(null);
 
   // Sync to localStorage
   useEffect(() => {
@@ -211,12 +214,21 @@ export default function App() {
       if (res) {
         setFirebaseUser(res.user);
         setDriveAccessToken(res.accessToken);
+        setAuthHelpModalOpen(false);
+        setAuthErrorInfo(null);
         setGlobalBannerMsg('Google Drive connected! Billing documents can now be saved and synced automatically.');
         setTimeout(() => setGlobalBannerMsg(null), 5000);
       }
     } catch (err: any) {
       console.error('Sign-in failed:', err);
-      alert('Could not authenticate with Google Drive. Please ensure popups are allowed.');
+      const code = err?.code || 'auth/unknown';
+      const message = err?.message || 'Authentication error';
+      setAuthErrorInfo({
+        code,
+        message,
+        domain: typeof window !== 'undefined' ? window.location.hostname : '',
+      });
+      setAuthHelpModalOpen(true);
     } finally {
       setIsAuthenticating(false);
     }
@@ -806,6 +818,15 @@ export default function App() {
           onReminderSent={handleReminderSent}
         />
       )}
+
+      {/* Google Drive Domain Authorization & Auth Help Modal */}
+      <GoogleAuthHelpModal
+        isOpen={authHelpModalOpen}
+        errorInfo={authErrorInfo}
+        onClose={() => setAuthHelpModalOpen(false)}
+        onRetry={handleGoogleSignIn}
+        isAuthenticating={isAuthenticating}
+      />
 
       {/* Floating Bottom Action Dock for Invoices, Proformas, and Challans */}
       <BottomActionDock
