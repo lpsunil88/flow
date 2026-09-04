@@ -146,10 +146,6 @@ export interface Document {
   sourceProformaId?: string;
   sourceChallanId?: string;
   companyId?: string;
-  theme?: string;
-  designId?: string;
-  invoiceTemplate?: InvoiceTemplate;
-  template?: InvoiceTemplate;
   shippingAddress?: ShippingAddress;
   dispatchAddress?: DispatchAddress;
   stampUrl?: string;
@@ -159,8 +155,6 @@ export interface Document {
   includeStamp?: boolean;
   includeSignature?: boolean;
 }
-
-export type InvoiceTemplate = 'Modern' | 'Classic' | 'Minimal';
 
 export interface ProductList {
   id: string;
@@ -209,6 +203,8 @@ export interface CompanyProfile {
   phone: string;
   address: string;
   city: string;
+  state?: string;
+  stateCode?: string;
   country: string;
   website: string;
   bankDetails: {
@@ -217,6 +213,7 @@ export interface CompanyProfile {
     bankName: string;
     ifscSwift: string;
     upiId: string;
+    branch?: string;
     qrCodeText?: string;
   };
   defaultCurrency: string;
@@ -227,13 +224,6 @@ export interface CompanyProfile {
   proformaPrefix: string;
   challanPrefix: string;
   terms: string;
-  invoiceTheme?: string;
-  proformaTheme?: string;
-  challanTheme?: string;
-  defaultInvoiceDesign?: string;
-  defaultProformaDesign?: string;
-  defaultChallanDesign?: string;
-  defaultInvoiceTemplate?: InvoiceTemplate;
   stampUrl?: string; // Company Official Stamp/Seal Data URL or link
   signatureUrl?: string; // Authorized Signatory Signature Data URL or link
   authorizedSignatoryName?: string; // e.g. "Sunil Kumar"

@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Client, CompanyProfile, CurrencyConfig, Document, DocumentType, LineItem, StaffUser, Item, ProductList, InvoiceTemplate, ShippingAddress, DispatchAddress } from '../types';
+import { Client, CompanyProfile, CurrencyConfig, Document, DocumentType, LineItem, StaffUser, Item, ProductList, ShippingAddress, DispatchAddress } from '../types';
 import { formatCurrency } from '../services/pdfGenerator';
-import { DOCUMENT_DESIGNS, DocumentDesign, getDesignForDocument } from '../services/themeEngine';
 import { 
   Plus, Trash2, ArrowLeft, Save, CloudUpload, FileText, Truck, Receipt, Check, 
-  Package, Palette, Search, Sparkles, Loader2, X, Building2, ListFilter, ShieldCheck,
+  Package, Search, Sparkles, Loader2, X, Building2, ListFilter, ShieldCheck,
   Stamp, PenTool, FileSignature, MapPin, Upload
 } from 'lucide-react';
 import { generateSampleStamp, generateSampleSignature } from '../utils/stampSignature';
@@ -63,45 +62,6 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
   const [shippingCharges, setShippingCharges] = useState(initialDocument?.shippingCharges || 0);
   const [notes, setNotes] = useState(initialDocument?.notes || 'Thank you for your valued business.');
   const [terms, setTerms] = useState(initialDocument?.terms || company.terms);
-
-  // Visual Template Style Selection ('Modern' | 'Classic' | 'Minimal')
-  const initialInvoiceTemplate: InvoiceTemplate =
-    initialDocument?.invoiceTemplate ||
-    initialDocument?.template ||
-    (initialDocument?.designId === 'classic-corporate' || initialDocument?.designId === 'tender-formal'
-      ? 'Classic'
-      : initialDocument?.designId === 'modern-minimal' || initialDocument?.designId === 'compact-grid'
-      ? 'Minimal'
-      : company.defaultInvoiceTemplate || 'Modern');
-
-  const [invoiceTemplate] = useState<InvoiceTemplate>(initialInvoiceTemplate);
-
-  // Document Design Selection
-  const defaultDesignForType =
-    docType === 'invoice'
-      ? (company.defaultInvoiceDesign || 'corporate-merchandise-a4')
-      : docType === 'proforma'
-      ? (company.defaultProformaDesign || 'corporate-merchandise-a4')
-      : (company.defaultChallanDesign || 'corporate-merchandise-a4');
-
-  const [designId, setDesignId] = useState<string>(
-    initialDocument?.designId || initialDocument?.theme || defaultDesignForType
-  );
-
-  // Update designId when docType changes if it wasn't manually customized
-  useEffect(() => {
-    if (!initialDocument?.designId && !initialDocument?.theme) {
-      if (docType === 'invoice') {
-        setDesignId(company.defaultInvoiceDesign || 'corporate-merchandise-a4');
-      } else if (docType === 'proforma') {
-        setDesignId(company.defaultProformaDesign || 'corporate-merchandise-a4');
-      } else {
-        setDesignId(company.defaultChallanDesign || 'corporate-merchandise-a4');
-      }
-    }
-  }, [docType, company]);
-
-  const currentDesign = getDesignForDocument(docType, designId);
 
   // Challan details state
   const [vehicleNo, setVehicleNo] = useState(initialDocument?.challanDetails?.vehicleNo || '');
@@ -336,10 +296,6 @@ export const DocumentEditor: React.FC<DocumentEditorProps> = ({
     const doc: Document = {
       id: initialDocument?.id || `doc-${Date.now()}`,
       companyId: company.id,
-      designId: designId,
-      theme: currentDesign.theme.id,
-      invoiceTemplate: invoiceTemplate,
-      template: invoiceTemplate,
       type: docType,
       documentNumber: docNumber.trim(),
       date,

@@ -756,7 +756,7 @@ export default function App() {
               />
             )}
 
-            {/* View 5: Settings, Multi-Company Management & Themes */}
+            {/* View 5: Settings & Multi-Company Management */}
             {activeView === 'settings' && (
               <SettingsView
                 company={company}

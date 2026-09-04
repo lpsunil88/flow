@@ -597,19 +597,41 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
               </div>
 
               {/* Signatures Dual Lines */}
-              <div className="pt-8 flex justify-between items-end gap-2 text-center text-[9.5px] text-slate-600">
+              <div className="pt-3 flex justify-between items-end gap-3 text-center text-[9.5px] text-slate-600">
                 <div className="flex-1">
+                  <div className="h-10 flex items-end justify-center pb-1">
+                    <span className="text-[9px] text-slate-400 italic">Signature of Goods Receiver</span>
+                  </div>
                   <div className="border-t border-slate-400 pt-1 text-slate-700">
                     Receiver's Signature
                   </div>
                 </div>
 
-                <div className="flex-1">
-                  <div className="font-semibold text-slate-900 text-[10px] mb-0.5">
-                    {signatoryName}
+                <div className="flex-1 relative flex flex-col items-center">
+                  <div className="h-10 relative flex items-center justify-center w-full">
+                    {/* Official Stamp */}
+                    {doc.includeStamp !== false && (doc.stampUrl || company.stampUrl) && (
+                      <img
+                        src={doc.stampUrl || company.stampUrl}
+                        alt="Company Stamp"
+                        className="h-12 w-12 object-contain opacity-85 absolute -left-2 -top-1 pointer-events-none z-0"
+                      />
+                    )}
+                    {/* Authorized Signature */}
+                    {doc.includeSignature !== false && (doc.signatureUrl || company.signatureUrl) ? (
+                      <img
+                        src={doc.signatureUrl || company.signatureUrl}
+                        alt="Signature"
+                        className="h-9 max-w-[110px] object-contain relative z-10"
+                      />
+                    ) : (
+                      <div className="font-semibold text-slate-900 text-[10px]">
+                        {signatoryName}
+                      </div>
+                    )}
                   </div>
-                  <div className="border-t border-slate-400 pt-1 text-slate-700">
-                    Authorized signatory
+                  <div className="w-full border-t border-slate-400 pt-1 text-slate-700">
+                    Authorized Signatory
                   </div>
                 </div>
               </div>
