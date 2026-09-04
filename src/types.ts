@@ -97,6 +97,10 @@ export interface ChallanDetails {
   deliveryNote?: string;
   returnable: boolean;
   receivedBy?: string;
+  purpose?: string;
+  lrNo?: string;
+  driverName?: string;
+  remarks?: string;
 }
 
 export interface Document {
@@ -198,11 +202,14 @@ export interface CompanyProfile {
   id: string;
   name: string;
   taxId: string;
+  cin?: string;
+  department?: string;
   logoUrl?: string;
   email: string;
   phone: string;
   address: string;
   city: string;
+  pincode?: string;
   state?: string;
   stateCode?: string;
   country: string;

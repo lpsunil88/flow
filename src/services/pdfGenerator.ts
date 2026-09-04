@@ -1,5 +1,9 @@
 import { jsPDF } from 'jspdf';
 import { CompanyProfile, CurrencyConfig, Document } from '../types';
+import {
+  DOCUMENT_THEME,
+  resolveDocumentTemplateData,
+} from './documentTemplate';
 
 export function getCurrencySymbol(code: string = 'INR', currencies: CurrencyConfig[] = []): string {
   const c = code?.toUpperCase();
@@ -47,544 +51,701 @@ export function formatCurrencyForPdf(
   })}`;
 }
 
-// Convert a number into Indian English words
-function numberToWords(num: number): string {
-  if (num === 0) return 'Zero Rupees Only';
-  const a = [
-    '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
-    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen',
-  ];
-  const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+export function generateDocumentPdf(doc: Document, company: CompanyProfile, currencies: CurrencyConfig[] = []): jsPDF {
+  const t = resolveDocumentTemplateData(doc, company, currencies);
+  const { colors, dimensions, fonts } = DOCUMENT_THEME;
 
-  function inWords(n: number): string {
-    let str = '';
-    if (n > 9999999) {
-      str += inWords(Math.floor(n / 10000000)) + ' Crore ';
-      n %= 10000000;
-    }
-    if (n > 99999) {
-      str += inWords(Math.floor(n / 100000)) + ' Lakh ';
-      n %= 100000;
-    }
-    if (n > 999) {
-      str += inWords(Math.floor(n / 1000)) + ' Thousand ';
-      n %= 1000;
-    }
-    if (n > 99) {
-      str += inWords(Math.floor(n / 100)) + ' Hundred ';
-      n %= 100;
-    }
-    if (n > 0) {
-      if (str !== '') str += 'and ';
-      if (n < 20) str += a[n];
-      else {
-        str += b[Math.floor(n / 10)];
-        if (n % 10 > 0) str += ' ' + a[n % 10];
-      }
-    }
-    return str.trim();
-  }
-
-  const integerPart = Math.floor(Math.abs(num));
-  const decimalPart = Math.round((Math.abs(num) - integerPart) * 100);
-
-  let result = inWords(integerPart) + ' Rupees';
-  if (decimalPart > 0) {
-    result += ' and ' + inWords(decimalPart) + ' Paise';
-  }
-  return result + ' Only';
-}
-
-export function generateDocumentPdf(doc: Document, company: CompanyProfile, currencies: CurrencyConfig[]): jsPDF {
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
   });
 
-  const pageWidth = 210;
-  const pageHeight = 297;
-  const margin = 10;
-  const contentWidth = pageWidth - margin * 2; // 190mm
-  const docFont = 'helvetica';
+  const pageWidth = dimensions.pageWidthMm;
+  const margin = dimensions.marginMm;
+  const contentWidth = dimensions.contentWidthMm;
+  const docFont = fonts.pdfFont;
 
-  let y = margin;
+  let y = 8;
 
-  // 1. Outer Border
-  pdf.setDrawColor(203, 213, 225); // slate-300
-  pdf.setLineWidth(0.35);
-  pdf.rect(margin, margin, contentWidth, pageHeight - margin * 2, 'S');
+  // ==========================================
+  // 1. TOP DOCUMENT CATEGORY & TITLE BANNER
+  // ==========================================
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(8);
+  pdf.setTextColor(colors.primary.rgb[0], colors.primary.rgb[1], colors.primary.rgb[2]);
+  pdf.text(t.config.divisionText, margin, y + 3.5);
 
-  // 2. Header Section
-  const hasLogo = Boolean(company.logoUrl);
-  let textX = margin + 4;
-  const logoWidth = 22;
-  const logoHeight = 22;
+  // Big Bold Document Title
+  pdf.setFontSize(15);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(t.config.documentTitle, margin, y + 9.5);
 
-  if (hasLogo) {
+  // Subtitle
+  pdf.setFont(docFont, 'normal');
+  pdf.setFontSize(6.8);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text(t.config.subtitleText, margin, y + 13);
+
+  // Right-aligned banner info
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(7.5);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text(t.config.defaultCopyLabel, margin + contentWidth, y + 3.5, { align: 'right' });
+
+  pdf.setFont(docFont, 'normal');
+  pdf.setFontSize(7.5);
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  const purposeLabelX = margin + contentWidth;
+  pdf.text(`Purpose: `, purposeLabelX - pdf.getTextWidth(t.config.defaultPurpose) - 1, y + 8.5, { align: 'right' });
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(t.config.defaultPurpose, purposeLabelX, y + 8.5, { align: 'right' });
+
+  y += 15;
+
+  // Thick Horizontal Divider Line
+  pdf.setDrawColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.setLineWidth(0.65);
+  pdf.line(margin, y, margin + contentWidth, y);
+  y += 2.5;
+
+  // ==========================================
+  // 2. COMPANY PROFILE HEADER
+  // ==========================================
+  const logoBoxSize = 12;
+  let hasLogoRendered = false;
+
+  if (company.logoUrl) {
     try {
-      pdf.addImage(company.logoUrl!, 'PNG', margin + 3, y + 4, logoWidth, logoHeight);
-      textX = margin + logoWidth + 6;
+      pdf.addImage(company.logoUrl, 'PNG', margin, y, logoBoxSize, logoBoxSize);
+      hasLogoRendered = true;
     } catch {
       try {
-        pdf.addImage(company.logoUrl!, 'JPEG', margin + 3, y + 4, logoWidth, logoHeight);
-        textX = margin + logoWidth + 6;
+        pdf.addImage(company.logoUrl, 'JPEG', margin, y, logoBoxSize, logoBoxSize);
+        hasLogoRendered = true;
       } catch {
-        textX = margin + 4;
+        hasLogoRendered = false;
       }
     }
   }
 
-  // Right Header width & coordinates
-  const badgeWidth = 52;
-  const badgeHeight = 7.5;
-  const badgeX = pageWidth - margin - badgeWidth - 3;
-  const maxHeaderLeftWidth = badgeX - textX - 4; // safe boundary so left text NEVER collides with badge
-
-  // Company Name (Left Header)
-  pdf.setFont(docFont, 'bold');
-  const companyName = company.name || 'COMPANY NAME';
-  pdf.setFontSize(companyName.length > 36 ? 10.5 : 12);
-  pdf.setTextColor(15, 23, 42); // slate-900
-
-  const compNameLines = pdf.splitTextToSize(companyName, maxHeaderLeftWidth);
-  let compY = y + 6;
-  compNameLines.forEach((line: string) => {
-    pdf.text(line, textX, compY);
-    compY += 4.5;
-  });
-
-  // Company Metadata (Address, Tax ID, Phone, Email, State)
-  pdf.setFont(docFont, 'normal');
-  pdf.setFontSize(7.2);
-  pdf.setTextColor(71, 85, 105); // slate-600
-
-  const companyAddressParts = [company.address, company.city, company.country].filter(Boolean);
-  const companyAddr = companyAddressParts.join(', ').replace(/\s+/g, ' ').trim();
-  if (companyAddr) {
-    const addrLines = pdf.splitTextToSize(companyAddr, maxHeaderLeftWidth);
-    addrLines.slice(0, 2).forEach((line: string) => {
-      pdf.text(line, textX, compY);
-      compY += 3.6;
-    });
-  }
-
-  const taxIdText = `GSTIN: ${company.taxId || 'N/A'}${company.phone ? ` | Phone: ${company.phone}` : ''}`;
-  pdf.text(taxIdText, textX, compY);
-  compY += 3.6;
-
-  const contactText = `Email: ${company.email || 'N/A'}${company.website ? ` | Web: ${company.website}` : ''}`;
-  pdf.text(contactText, textX, compY);
-  compY += 3.6;
-
-  if (company.state) {
-    pdf.text(`State: ${company.state}${company.stateCode ? ` (Code: ${company.stateCode})` : ''}`, textX, compY);
-    compY += 3.6;
-  }
-
-  // Right Header: Document Type Badge & Details
-  const docTypeLabel =
-    doc.type === 'invoice'
-      ? 'TAX INVOICE'
-      : doc.type === 'proforma'
-      ? 'PROFORMA INVOICE'
-      : 'DELIVERY CHALLAN';
-
-  const badgeBg =
-    doc.type === 'invoice'
-      ? [37, 99, 235]
-      : doc.type === 'proforma'
-      ? [217, 119, 6]
-      : [16, 185, 129];
-
-  pdf.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2]);
-  pdf.rect(badgeX, y + 3, badgeWidth, badgeHeight, 'F');
-  pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(8.5);
-  pdf.setTextColor(255, 255, 255);
-  pdf.text(docTypeLabel, badgeX + badgeWidth / 2, y + 7.8, { align: 'center' });
-
-  // Document Number & Dates
-  const rightAlignX = pageWidth - margin - 4;
-  pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(10);
-  pdf.setTextColor(15, 23, 42);
-  pdf.text(doc.documentNumber, rightAlignX, y + 16, { align: 'right' });
-
-  pdf.setFont(docFont, 'normal');
-  pdf.setFontSize(7.5);
-  pdf.setTextColor(71, 85, 105);
-  pdf.text(`Date: ${doc.date}`, rightAlignX, y + 21, { align: 'right' });
-  pdf.text(`Due Date: ${doc.dueDate || doc.date}`, rightAlignX, y + 25.5, { align: 'right' });
-
-  const copyLabel =
-    doc.type === 'challan'
-      ? 'Original for Consignee'
-      : doc.type === 'invoice'
-      ? 'Original for Recipient'
-      : 'Commercial Quotation';
-  pdf.text(copyLabel, rightAlignX, y + 30, { align: 'right' });
-
-  // Calculate actual header height dynamically
-  const headerHeight = Math.max(35, compY - y + 2);
-  pdf.setDrawColor(203, 213, 225);
-  pdf.line(margin, y + headerHeight, margin + contentWidth, y + headerHeight);
-  y += headerHeight;
-
-  // 3. Optional Dispatch / Challan Logistics Bar
-  if (doc.type === 'challan' || doc.challanDetails) {
-    const challanBarH = 9.5;
-    pdf.setFillColor(248, 250, 252);
-    pdf.rect(margin, y, contentWidth, challanBarH, 'F');
-    pdf.setDrawColor(203, 213, 225);
-    pdf.line(margin, y + challanBarH, margin + contentWidth, y + challanBarH);
-
-    pdf.setFont(docFont, 'bold');
-    pdf.setFontSize(7.2);
-    pdf.setTextColor(30, 41, 59);
-    pdf.text('LOGISTICS / TRANSPORT DISPATCH PARTICULARS:', margin + 4, y + 4.2);
-
-    pdf.setFont(docFont, 'normal');
-    pdf.setFontSize(7);
-    const vehicleText = doc.challanDetails?.vehicleNo ? `Vehicle: ${doc.challanDetails.vehicleNo}` : 'Vehicle: Standard Fleet';
-    const modeText = doc.challanDetails?.dispatchThrough ? `Via: ${doc.challanDetails.dispatchThrough}` : 'Via: Road Transport';
-    const lrText = doc.challanDetails?.deliveryNote ? `LR/GR: ${doc.challanDetails.deliveryNote}` : 'Handover: Direct';
-    const returnText = doc.challanDetails?.returnable ? 'Type: Returnable' : 'Type: Non-Returnable';
-    pdf.text(`${vehicleText}   |   ${modeText}   |   ${lrText}   |   ${returnText}`, margin + 4, y + 7.8);
-    y += challanBarH;
-  }
-
-  // 4. Buyer & Consignee Statutory Details Grid (DYNAMIC WRAPPING & NO OVERLAP)
-  const hasShipping = Boolean(
-    doc.shippingAddress?.enabled &&
-      (doc.shippingAddress.name || doc.shippingAddress.company || doc.shippingAddress.address)
-  );
-  const buyerBoxW = hasShipping ? contentWidth / 2 : contentWidth;
-
-  // Track Y positions dynamically for buyer and consignee to prevent line collision
-  let buyerY = y + 4.5;
-  pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(7.5);
-  pdf.setTextColor(71, 85, 105);
-  pdf.text('BILLED TO (BUYER):', margin + 4, buyerY);
-  buyerY += 4.5;
-
-  pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(8.5);
-  pdf.setTextColor(15, 23, 42);
-  const clientTitle = doc.clientCompany || doc.clientName || 'Client Name';
-  const clientTitleLines = pdf.splitTextToSize(clientTitle, buyerBoxW - 8);
-  clientTitleLines.forEach((line: string) => {
-    pdf.text(line, margin + 4, buyerY);
-    buyerY += 3.8;
-  });
-
-  pdf.setFont(docFont, 'normal');
-  pdf.setFontSize(7);
-  pdf.setTextColor(71, 85, 105);
-
-  if (doc.clientName && doc.clientCompany) {
-    const contactLine = `Attn: ${doc.clientName}${doc.clientPhone ? ` | Phone: ${doc.clientPhone}` : ''}`;
-    pdf.text(contactLine, margin + 4, buyerY);
-    buyerY += 3.5;
-  } else if (doc.clientPhone) {
-    pdf.text(`Phone: ${doc.clientPhone}`, margin + 4, buyerY);
-    buyerY += 3.5;
-  }
-
-  if (doc.clientAddress) {
-    const cleanAddr = doc.clientAddress.replace(/\n+/g, ', ').replace(/\s+/g, ' ').trim();
-    const addrLines = pdf.splitTextToSize(`Address: ${cleanAddr}`, buyerBoxW - 8);
-    addrLines.slice(0, 3).forEach((line: string) => {
-      pdf.text(line, margin + 4, buyerY);
-      buyerY += 3.5;
-    });
-  }
-
-  const buyerTaxId = doc.clientTaxId ? `GSTIN / Tax ID: ${doc.clientTaxId}` : 'GSTIN / Tax ID: Unregistered / Consumer';
-  pdf.text(buyerTaxId, margin + 4, buyerY);
-  buyerY += 3.5;
-
-  let consigneeY = y + 4.5;
-  if (hasShipping) {
-    const rightX = margin + buyerBoxW + 4;
-    pdf.setFont(docFont, 'bold');
-    pdf.setFontSize(7.5);
-    pdf.setTextColor(71, 85, 105);
-    pdf.text('SHIPPED TO (CONSIGNEE):', rightX, consigneeY);
-    consigneeY += 4.5;
-
+  if (!hasLogoRendered) {
+    // Amber monogram box matching theme
+    pdf.setFillColor(colors.amberBrand.bgRgb[0], colors.amberBrand.bgRgb[1], colors.amberBrand.bgRgb[2]);
+    pdf.setDrawColor(colors.amberBrand.borderRgb[0], colors.amberBrand.borderRgb[1], colors.amberBrand.borderRgb[2]);
+    pdf.setLineWidth(0.3);
+    pdf.roundedRect(margin, y, logoBoxSize, logoBoxSize, 1.2, 1.2, 'FD');
     pdf.setFont(docFont, 'bold');
     pdf.setFontSize(8.5);
-    pdf.setTextColor(15, 23, 42);
-    const shipTitle = doc.shippingAddress?.company || doc.shippingAddress?.name || doc.clientCompany || doc.clientName;
-    const shipTitleLines = pdf.splitTextToSize(shipTitle, buyerBoxW - 8);
-    shipTitleLines.forEach((line: string) => {
-      pdf.text(line, rightX, consigneeY);
-      consigneeY += 3.8;
-    });
-
-    pdf.setFont(docFont, 'normal');
-    pdf.setFontSize(7);
-    pdf.setTextColor(71, 85, 105);
-
-    const shipContact = doc.shippingAddress?.name || doc.clientName;
-    const shipPhone = doc.shippingAddress?.phone || doc.clientPhone;
-    if (shipContact) {
-      pdf.text(`Contact: ${shipContact}${shipPhone ? ` | Phone: ${shipPhone}` : ''}`, rightX, consigneeY);
-      consigneeY += 3.5;
-    }
-
-    const shipAddrStr = [doc.shippingAddress?.address, doc.shippingAddress?.city, doc.shippingAddress?.state]
-      .filter(Boolean)
-      .join(', ')
-      .replace(/\n+/g, ', ')
-      .trim();
-    if (shipAddrStr) {
-      const shipAddrLines = pdf.splitTextToSize(`Delivery: ${shipAddrStr}`, buyerBoxW - 8);
-      shipAddrLines.slice(0, 3).forEach((line: string) => {
-        pdf.text(line, rightX, consigneeY);
-        consigneeY += 3.5;
-      });
-    }
-
-    const shipTaxId = doc.shippingAddress?.taxId || doc.clientTaxId || 'N/A';
-    pdf.text(`Consignee GSTIN: ${shipTaxId}`, rightX, consigneeY);
-    consigneeY += 3.5;
+    pdf.setTextColor(colors.amberBrand.rgb[0], colors.amberBrand.rgb[1], colors.amberBrand.rgb[2]);
+    pdf.text(t.monogram, margin + logoBoxSize / 2, y + 7.8, { align: 'center' });
   }
 
-  // Box height accommodates all address lines with padding
-  const buyerBoxH = Math.max(26, Math.max(buyerY - y, consigneeY - y) + 2);
-  pdf.setDrawColor(203, 213, 225);
-  pdf.rect(margin, y, contentWidth, buyerBoxH, 'S');
+  const compTextX = margin + logoBoxSize + 3;
+  const compMaxW = contentWidth - logoBoxSize - 3;
 
-  if (hasShipping) {
-    pdf.line(margin + buyerBoxW, y, margin + buyerBoxW, y + buyerBoxH);
+  // Company Name
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(10.5);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(company.name || 'SUTRAA CREATIONS PRIVATE LIMITED', compTextX, y + 4);
+
+  // Subtitle / Legal line
+  pdf.setFont(docFont, 'normal');
+  pdf.setFontSize(6.8);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text(company.name || 'Sutraa Creations Private Limited', compTextX, y + 7.6);
+
+  // Regd. Office
+  pdf.setFont(docFont, 'normal');
+  pdf.setFontSize(6.8);
+  pdf.setTextColor(colors.textBody.rgb[0], colors.textBody.rgb[1], colors.textBody.rgb[2]);
+  const regdOfficeStr = `Regd. Office: ${company.address || 'B-4, Ashok Guruprasad CHS Hanuman Road'}, ${company.city || 'Vileparle East, Mumbai'} - ${company.pincode || '400057'}, ${t.consignorState.name}`;
+  pdf.text(pdf.splitTextToSize(regdOfficeStr, compMaxW)[0], compTextX, y + 11.2);
+
+  // Tax IDs and Contact row (full width)
+  const taxIdLine = `GSTIN: ${company.taxId || '27AAGCS6232B1ZM'}    |    PAN: ${t.panStr}    |    CIN: ${company.cin || 'U18109MH2020PTC345678'}`;
+  pdf.text(taxIdLine, margin, y + 15.5);
+
+  const contactLine = `Phone: ${company.phone || '+917840069490'}    •    Email: ${company.email || 'sunil@sutraa.in'}    •    State: ${t.consignorState.name} (${t.consignorState.code})`;
+  pdf.text(contactLine, margin, y + 19);
+
+  y += 21.5;
+
+  // Thin separator line
+  pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+  pdf.setLineWidth(0.25);
+  pdf.line(margin, y, margin + contentWidth, y);
+  y += 2.5;
+
+  // ==========================================
+  // 3. 4-COLUMN METADATA INFO STRIP
+  // ==========================================
+  const stripH = 11;
+  pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
+  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+  pdf.setLineWidth(0.3);
+  pdf.roundedRect(margin, y, contentWidth, stripH, 1, 1, 'FD');
+
+  const colW = contentWidth / 4; // 47.5mm each
+  for (let i = 1; i < 4; i++) {
+    pdf.line(margin + colW * i, y, margin + colW * i, y + stripH);
   }
-  y += buyerBoxH;
 
-  // 5. Line Items Table Header
-  const colX = {
-    sno: margin + 3,
-    desc: margin + 9,
-    hsn: margin + 82,
-    qty: margin + 122,
-    rate: margin + 146,
-    tax: margin + 163,
-    total: margin + contentWidth - 3,
-  };
+  // Col 1: Document Number
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(6.2);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text(t.config.col1Label, margin + 2.5, y + 4);
+  pdf.setFontSize(7.8);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(doc.documentNumber || 'SCPL/26-27/0001', margin + 2.5, y + 8.5);
 
-  const tableHeaderH = 7.5;
-  pdf.setFillColor(241, 245, 249);
-  pdf.rect(margin, y, contentWidth, tableHeaderH, 'F');
-  pdf.setDrawColor(203, 213, 225);
-  pdf.line(margin, y + tableHeaderH, margin + contentWidth, y + tableHeaderH);
+  // Col 2: Date & Time
+  pdf.setFontSize(6.2);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text(t.config.col2Label, margin + colW + 2.5, y + 4);
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(7.2);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(t.formattedDateTime, margin + colW + 2.5, y + 8.5);
+
+  // Col 3: E-Way Bill / Due Date
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(6.2);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text(t.config.col3Label, margin + colW * 2 + 2.5, y + 4);
+  pdf.setFontSize(7.2);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  const col3Val =
+    doc.type === 'challan'
+      ? doc.challanDetails?.deliveryNote || 'N/A'
+      : doc.dueDate || doc.date || 'N/A';
+  pdf.text(col3Val, margin + colW * 2 + 2.5, y + 8.5);
+
+  // Col 4: Vehicle / Ref
+  pdf.setFontSize(6.2);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text(t.config.col4Label, margin + colW * 3 + 2.5, y + 4);
+  pdf.setFontSize(7.2);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  const vehicleVal = doc.challanDetails?.vehicleNo || 'N/A';
+  pdf.text(vehicleVal, margin + colW * 3 + 2.5, y + 8.5);
+
+  y += stripH + 2.5;
+
+  // ==========================================
+  // 4. TWIN SELLER / BUYER (CONSIGNOR / CONSIGNEE) CARDS
+  // ==========================================
+  const cardW = (contentWidth - 4) / 2; // 93mm each
+  const cardH = 26;
+
+  // Left Card: Consignor / Seller
+  pdf.setFillColor(255, 255, 255);
+  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+  pdf.setLineWidth(0.3);
+  pdf.roundedRect(margin, y, cardW, cardH, 1.2, 1.2, 'FD');
+
+  // Left Card Header Bar
+  pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
+  pdf.rect(margin, y, cardW, 5, 'F');
+  pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+  pdf.line(margin, y + 5, margin + cardW, y + 5);
 
   pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(7.5);
-  pdf.setTextColor(30, 41, 59);
+  pdf.setFontSize(6.5);
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  pdf.text(t.config.sellerCardTitle, margin + 2.5, y + 3.5);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(`STATE: ${t.consignorState.code}`, margin + cardW - 2.5, y + 3.5, { align: 'right' });
 
-  pdf.text('#', colX.sno, y + 5);
-  pdf.text('Description of Goods / Services', colX.desc, y + 5);
-  pdf.text('HSN/SAC', colX.hsn, y + 5);
-  pdf.text('Qty', colX.qty, y + 5, { align: 'right' });
-  pdf.text('Rate', colX.rate, y + 5, { align: 'right' });
-  pdf.text('Tax', colX.tax, y + 5, { align: 'right' });
-  pdf.text('Amount', colX.total, y + 5, { align: 'right' });
+  // Left Card Body
+  let cardLeftY = y + 8.2;
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(7.5);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(pdf.splitTextToSize(t.sellerTitle, cardW - 5)[0], margin + 2.5, cardLeftY);
+  cardLeftY += 3.4;
+
+  pdf.setFont(docFont, 'normal');
+  pdf.setFontSize(6.5);
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  pdf.text(pdf.splitTextToSize(t.sellerAddr, cardW - 5)[0], margin + 2.5, cardLeftY);
+  cardLeftY += 3.2;
+
+  pdf.text(t.sellerCity, margin + 2.5, cardLeftY);
+  cardLeftY += 3.4;
+
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text('GSTIN: ', margin + 2.5, cardLeftY);
+  pdf.setFont(docFont, 'normal');
+  pdf.text(t.sellerGstin, margin + 11.5, cardLeftY);
+  cardLeftY += 3.2;
+
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  pdf.text('Contact: ', margin + 2.5, cardLeftY);
+  pdf.setFont(docFont, 'normal');
+  pdf.text(pdf.splitTextToSize(t.sellerContact, cardW - 16)[0], margin + 13.5, cardLeftY);
+
+  // Right Card: Consignee / Buyer
+  const rightCardX = margin + cardW + 4;
+  pdf.setFillColor(255, 255, 255);
+  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+  pdf.roundedRect(rightCardX, y, cardW, cardH, 1.2, 1.2, 'FD');
+
+  // Right Card Header Bar
+  pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
+  pdf.rect(rightCardX, y, cardW, 5, 'F');
+  pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+  pdf.line(rightCardX, y + 5, rightCardX + cardW, y + 5);
+
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(6.5);
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  pdf.text(t.config.buyerCardTitle, rightCardX + 2.5, y + 3.5);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(`STATE: ${t.consigneeState.code}`, rightCardX + cardW - 2.5, y + 3.5, { align: 'right' });
+
+  // Right Card Body
+  let cardRightY = y + 8.2;
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(7.5);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(pdf.splitTextToSize(t.buyerTitle, cardW - 5)[0], rightCardX + 2.5, cardRightY);
+  cardRightY += 3.4;
+
+  pdf.setFont(docFont, 'normal');
+  pdf.setFontSize(6.5);
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  pdf.text(pdf.splitTextToSize(t.buyerAddr, cardW - 5)[0], rightCardX + 2.5, cardRightY);
+  cardRightY += 3.2;
+
+  pdf.text(t.buyerCity, rightCardX + 2.5, cardRightY);
+  cardRightY += 3.4;
+
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text('GSTIN: ', rightCardX + 2.5, cardRightY);
+  pdf.setFont(docFont, 'normal');
+  pdf.text(t.buyerGstin, rightCardX + 11.5, cardRightY);
+  cardRightY += 3.2;
+
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  pdf.text('Place of Supply: ', rightCardX + 2.5, cardRightY);
+  pdf.setFont(docFont, 'normal');
+  pdf.text(`${t.consigneeState.code}-${t.consigneeState.name}`, rightCardX + 22, cardRightY);
+
+  y += cardH + 2.5;
+
+  // ==========================================
+  // 5. TRANSPORT / LOGISTICS DETAILS STRIP
+  // ==========================================
+  const transH = 6;
+  pdf.setFillColor(255, 255, 255);
+  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+  pdf.setLineWidth(0.3);
+  pdf.roundedRect(margin, y, contentWidth, transH, 1, 1, 'FD');
+
+  pdf.setFont(docFont, 'normal');
+  pdf.setFontSize(6.6);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+
+  const transItemW = contentWidth / 4;
+
+  // Item 1: Transport Mode
+  pdf.text('Transport Mode: ', margin + 2.5, y + 4.1);
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(t.transportMode, margin + 20, y + 4.1);
+
+  // Item 2: Transporter
+  pdf.setFont(docFont, 'normal');
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text('Transporter: ', margin + transItemW + 2.5, y + 4.1);
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(t.transporterName, margin + transItemW + 16, y + 4.1);
+
+  // Item 3: LR/GR No & Date
+  pdf.setFont(docFont, 'normal');
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text('LR/GR No & Date: ', margin + transItemW * 2 + 2.5, y + 4.1);
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(t.lrGrText, margin + transItemW * 2 + 23, y + 4.1);
+
+  // Item 4: Driver / Contact
+  pdf.setFont(docFont, 'normal');
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text('Driver / Contact: ', margin + transItemW * 3 + 2.5, y + 4.1);
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(t.driverText, margin + transItemW * 3 + 21, y + 4.1);
+
+  y += transH + 2.5;
+
+  // ==========================================
+  // 6. LINE ITEMS TABLE (FROM SHARED BASE COLUMNS)
+  // ==========================================
+  const tableHeaderH = 6.5;
+  pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
+  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+  pdf.setLineWidth(0.3);
+  pdf.rect(margin, y, contentWidth, tableHeaderH, 'FD');
+
+  let curX = margin;
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(6.4);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+
+  t.tableColumns.forEach((col, idx) => {
+    if (idx > 0) {
+      pdf.line(curX, y, curX, y + tableHeaderH);
+    }
+    const textTargetX =
+      col.align === 'center'
+        ? curX + col.pdfWidthMm / 2
+        : col.align === 'right'
+        ? curX + col.pdfWidthMm - 2
+        : curX + 2;
+
+    const columnTitle =
+      col.key === 'rate'
+        ? `Rate (${t.pdfCurrencySymbol})`
+        : col.key === 'taxval'
+        ? `Taxable Val (${t.pdfCurrencySymbol})`
+        : col.key === 'tax'
+        ? `${col.title} (${t.pdfCurrencySymbol})`
+        : col.key === 'total'
+        ? `Total (${t.pdfCurrencySymbol})`
+        : col.title;
+
+    pdf.text(columnTitle, textTargetX, y + 4.3, { align: col.align as 'center' | 'right' | 'left' });
+    curX += col.pdfWidthMm;
+  });
 
   y += tableHeaderH;
 
-  // 6. Line Items Rows
+  // Table Rows
   pdf.setFont(docFont, 'normal');
-  pdf.setFontSize(7.2);
-  pdf.setTextColor(15, 23, 42);
+  pdf.setFontSize(6.8);
 
   doc.items.forEach((item, index) => {
-    const descLines = pdf.splitTextToSize(item.description || 'Merchandise Item', 70);
-    const rowH = Math.max(7.2, descLines.length * 3.6 + 2.5);
+    const descLines = pdf.splitTextToSize(item.description || 'Item Description', 50);
+    const rowH = Math.max(5.8, descLines.length * 3.2 + 2.5);
 
     if (index % 2 === 1) {
-      pdf.setFillColor(248, 250, 252);
+      pdf.setFillColor(250, 250, 250);
       pdf.rect(margin, y, contentWidth, rowH, 'F');
     }
 
-    pdf.text(String(index + 1), colX.sno, y + 4.8);
+    pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+    pdf.line(margin, y + rowH, margin + contentWidth, y + rowH);
 
-    let itemDescY = y + 4.8;
-    descLines.forEach((dLine: string) => {
-      pdf.text(dLine, colX.desc, itemDescY);
-      itemDescY += 3.6;
+    let cellX = margin;
+    t.tableColumns.forEach((col, idx) => {
+      if (idx > 0) {
+        pdf.line(cellX, y, cellX, y + rowH);
+      }
+
+      const cellCenter = cellX + col.pdfWidthMm / 2;
+      const cellRight = cellX + col.pdfWidthMm - 2;
+      const cellLeft = cellX + 2;
+
+      pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+
+      if (col.key === 'sno') {
+        pdf.text(String(index + 1), cellCenter, y + 4.1, { align: 'center' });
+      } else if (col.key === 'desc') {
+        let descY = y + 4.1;
+        pdf.setFont(docFont, 'bold');
+        pdf.text(descLines[0] || '', cellLeft, descY);
+        pdf.setFont(docFont, 'normal');
+        for (let l = 1; l < descLines.length; l++) {
+          descY += 3.1;
+          pdf.text(descLines[l], cellLeft, descY);
+        }
+      } else if (col.key === 'hsn') {
+        pdf.setFont(docFont, 'normal');
+        pdf.text(item.hsnCode || '-', cellCenter, y + 4.1, { align: 'center' });
+      } else if (col.key === 'qty') {
+        pdf.setFont(docFont, 'bold');
+        pdf.text(String(item.quantity || 1), cellCenter, y + 4.1, { align: 'center' });
+      } else if (col.key === 'uom') {
+        pdf.setFont(docFont, 'normal');
+        pdf.text(item.unit || 'PCS', cellCenter, y + 4.1, { align: 'center' });
+      } else if (col.key === 'rate') {
+        pdf.text(item.unitPrice.toFixed(2), cellRight, y + 4.1, { align: 'right' });
+      } else if (col.key === 'taxval') {
+        pdf.setFont(docFont, 'bold');
+        pdf.text(item.amount.toFixed(2), cellRight, y + 4.1, { align: 'right' });
+      } else if (col.key === 'tax') {
+        pdf.setFont(docFont, 'normal');
+        pdf.text(`${item.taxAmount.toFixed(2)} (${item.taxRate}%)`, cellRight, y + 4.1, { align: 'right' });
+      } else if (col.key === 'total') {
+        pdf.setFont(docFont, 'bold');
+        pdf.text(item.total.toFixed(2), cellRight, y + 4.1, { align: 'right' });
+      }
+
+      cellX += col.pdfWidthMm;
     });
 
-    pdf.text(item.hsnCode || '-', colX.hsn, y + 4.8);
-    pdf.text(`${item.quantity} ${item.unit || 'PCS'}`.trim(), colX.qty, y + 4.8, { align: 'right' });
-    pdf.text(formatCurrencyForPdf(item.unitPrice, doc.currency, currencies), colX.rate, y + 4.8, { align: 'right' });
-    pdf.text(`${item.taxRate}%`, colX.tax, y + 4.8, { align: 'right' });
-    pdf.text(formatCurrencyForPdf(item.total, doc.currency, currencies), colX.total, y + 4.8, { align: 'right' });
-
-    pdf.setDrawColor(226, 232, 240); // slate-200
-    pdf.line(margin, y + rowH, margin + contentWidth, y + rowH);
     y += rowH;
   });
 
-  // Table bottom border
-  pdf.setDrawColor(203, 213, 225);
-  pdf.line(margin, y, margin + contentWidth, y);
+  // Table Subtotal Row
+  const subtotalH = 5.8;
+  pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
+  pdf.rect(margin, y, contentWidth, subtotalH, 'F');
+  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+  pdf.rect(margin, y, contentWidth, subtotalH, 'S');
 
-  // 7. Totals & Financial Breakdown Section
-  const totalsSectionH = 44;
-  const splitX = margin + contentWidth * 0.56;
+  // "Sub Total" label spanning col 1-5 (8 + 54 + 17 + 13 + 12 = 104mm)
+  const labelSpanW = 104;
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(6.8);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text('Sub Total', margin + labelSpanW - 4, y + 4, { align: 'right' });
 
-  // Amount In Words & Bank Details (Left side)
+  let subColX = margin + labelSpanW;
+  pdf.line(subColX, y, subColX, y + subtotalH);
+
+  subColX += 19;
+  pdf.line(subColX, y, subColX, y + subtotalH);
+
+  // Taxable Val Total
+  pdf.text(doc.subtotal.toFixed(2), subColX + 21 - 2, y + 4, { align: 'right' });
+  subColX += 21;
+  pdf.line(subColX, y, subColX, y + subtotalH);
+
+  // Tax Total
+  pdf.text(doc.taxAmount.toFixed(2), subColX + 18 - 2, y + 4, { align: 'right' });
+  subColX += 18;
+  pdf.line(subColX, y, subColX, y + subtotalH);
+
+  // Grand Total
+  pdf.text(doc.grandTotal.toFixed(2), subColX + 28 - 2, y + 4, { align: 'right' });
+
+  y += subtotalH + 2;
+
+  // ==========================================
+  // 7. TOTAL ITEMS & QUANTITY STRIP
+  // ==========================================
+  const summaryStripH = 5.5;
+  pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
+  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+  pdf.setLineWidth(0.3);
+  pdf.roundedRect(margin, y, contentWidth, summaryStripH, 1, 1, 'FD');
+
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(6.4);
+  pdf.setTextColor(colors.textBody.rgb[0], colors.textBody.rgb[1], colors.textBody.rgb[2]);
+  const supplyTypeText = t.isInterState ? 'INTER-STATE SUPPLY (IGST)' : 'INTRA-STATE SUPPLY (CGST + SGST)';
+  const summaryText = `TOTAL ITEMS: ${doc.items.length}      |      TOTAL QUANTITY: ${t.totalQuantity} ${doc.items[0]?.unit || 'PCS'}      |      ${supplyTypeText}`;
+  pdf.text(summaryText, margin + 4, y + 3.8);
+
+  y += summaryStripH + 2.5;
+
+  // ==========================================
+  // 8. TWO-COLUMN BREAKDOWN & BANK PARTICULARS
+  // ==========================================
+  const particularsH = 38;
+  const splitLeftW = 104;
+  const splitRightW = contentWidth - splitLeftW; // 86mm
+  const splitX = margin + splitLeftW;
+
+  pdf.setFillColor(255, 255, 255);
+  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+  pdf.setLineWidth(0.3);
+  pdf.rect(margin, y, contentWidth, particularsH, 'S');
+  pdf.line(splitX, y, splitX, y + particularsH);
+
+  // --- LEFT SIDE: Amount in Words, Remarks, Bank Details ---
+  let leftY = y + 4.5;
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(6.4);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text('AMOUNT CHARGEABLE IN WORDS:', margin + 3, leftY);
+  leftY += 3.8;
+
   pdf.setFont(docFont, 'bold');
   pdf.setFontSize(7.2);
-  pdf.setTextColor(71, 85, 105);
-  pdf.text('TOTAL AMOUNT IN WORDS:', margin + 4, y + 5.5);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  const wordsLines = pdf.splitTextToSize(t.amountInWords, splitLeftW - 6);
+  wordsLines.slice(0, 2).forEach((wl: string) => {
+    pdf.text(wl, margin + 3, leftY);
+    leftY += 3.4;
+  });
 
+  leftY += 1;
   pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(8);
-  pdf.setTextColor(15, 23, 42);
-  const words = numberToWords(doc.grandTotal);
-  const wordsLines = pdf.splitTextToSize(words, splitX - margin - 8);
-  pdf.text(wordsLines.slice(0, 2), margin + 4, y + 10);
-
-  // Bank Details
-  pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(7.2);
-  pdf.setTextColor(71, 85, 105);
-  pdf.text('BANK ACCOUNT PAYMENT DETAILS:', margin + 4, y + 22);
+  pdf.setFontSize(6.4);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text('PURPOSE OF DISPATCH / REMARKS:', margin + 3, leftY);
+  leftY += 3.4;
 
   pdf.setFont(docFont, 'normal');
-  pdf.setFontSize(7.2);
-  pdf.setTextColor(15, 23, 42);
-  if (company.bankDetails) {
-    const bankStr = `Bank: ${company.bankDetails.bankName || 'N/A'} (A/C: ${company.bankDetails.accountNumber || 'N/A'})`;
-    pdf.text(bankStr, margin + 4, y + 27);
-    const ifscStr = `IFSC: ${company.bankDetails.ifscSwift || 'N/A'} | Branch: ${company.bankDetails.branch || 'Main Branch'}`;
-    pdf.text(ifscStr, margin + 4, y + 32);
-    if (company.bankDetails.upiId) {
-      pdf.text(`UPI Digital VPA: ${company.bankDetails.upiId}`, margin + 4, y + 37);
-    }
+  pdf.setFontSize(6.5);
+  pdf.setTextColor(colors.textBody.rgb[0], colors.textBody.rgb[1], colors.textBody.rgb[2]);
+  pdf.text(pdf.splitTextToSize(t.remarksText, splitLeftW - 6)[0], margin + 3, leftY);
+  leftY += 4.5;
+
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(6.4);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text('BANK ACCOUNT & PAYMENT DETAILS:', margin + 3, leftY);
+  leftY += 3.4;
+
+  pdf.setFont(docFont, 'normal');
+  pdf.setFontSize(6.5);
+  pdf.setTextColor(colors.textBody.rgb[0], colors.textBody.rgb[1], colors.textBody.rgb[2]);
+  if (company.bankDetails?.bankName) {
+    pdf.text(
+      `Bank: ${company.bankDetails.bankName} (A/C: ${company.bankDetails.accountNumber || 'N/A'})`,
+      margin + 3,
+      leftY
+    );
+    leftY += 3.2;
+    pdf.text(
+      `IFSC: ${company.bankDetails.ifscSwift || 'N/A'}    |    Branch: ${company.bankDetails.branch || 'Mumbai'}${company.bankDetails.upiId ? `    |    UPI: ${company.bankDetails.upiId}` : ''}`,
+      margin + 3,
+      leftY
+    );
   } else {
-    pdf.text('Direct Electronic Wire / NEFT / RTGS Transfer Available', margin + 4, y + 27);
+    pdf.text('Direct Electronic Wire / NEFT / RTGS / UPI Transfer Available', margin + 3, leftY);
   }
 
-  // Right Side: Financial Breakdown
-  pdf.line(splitX, y, splitX, y + totalsSectionH);
-  pdf.line(margin, y + totalsSectionH, margin + contentWidth, y + totalsSectionH);
-
-  let rightY = y + 5.5;
-  const labelX = splitX + 4;
-  const valueX = margin + contentWidth - 4;
+  // --- RIGHT SIDE: Financial Totals Breakdown ---
+  let rightY = y + 4.5;
+  const rightLabelX = splitX + 3.5;
+  const rightValX = margin + contentWidth - 3.5;
 
   pdf.setFont(docFont, 'normal');
-  pdf.setFontSize(7.5);
-  pdf.setTextColor(71, 85, 105);
+  pdf.setFontSize(7.2);
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
 
-  pdf.text('Taxable Subtotal:', labelX, rightY);
-  pdf.text(formatCurrencyForPdf(doc.subtotal, doc.currency, currencies), valueX, rightY, { align: 'right' });
-  rightY += 5;
+  pdf.text('Total Taxable Value:', rightLabelX, rightY);
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(`${t.pdfCurrencySymbol} ${doc.subtotal.toFixed(2)}`, rightValX, rightY, { align: 'right' });
+  rightY += 4.5;
 
-  if (doc.taxType === 'gst') {
-    if (doc.cgstAmount || doc.sgstAmount) {
-      const halfRate = doc.taxRate ? (doc.taxRate / 2).toFixed(1) : '9';
-      pdf.text(`CGST (${halfRate}%):`, labelX, rightY);
-      pdf.text(formatCurrencyForPdf(doc.cgstAmount || 0, doc.currency, currencies), valueX, rightY, { align: 'right' });
-      rightY += 4.5;
+  pdf.setFont(docFont, 'normal');
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
 
-      pdf.text(`SGST (${halfRate}%):`, labelX, rightY);
-      pdf.text(formatCurrencyForPdf(doc.sgstAmount || 0, doc.currency, currencies), valueX, rightY, { align: 'right' });
-      rightY += 4.5;
-    } else if (doc.igstAmount) {
-      pdf.text(`IGST (${doc.taxRate}%):`, labelX, rightY);
-      pdf.text(formatCurrencyForPdf(doc.igstAmount, doc.currency, currencies), valueX, rightY, { align: 'right' });
-      rightY += 5;
-    } else if (doc.taxAmount > 0) {
-      pdf.text(`GST (${doc.taxRate}%):`, labelX, rightY);
-      pdf.text(formatCurrencyForPdf(doc.taxAmount, doc.currency, currencies), valueX, rightY, { align: 'right' });
-      rightY += 5;
-    }
-  } else if (doc.taxAmount > 0) {
-    pdf.text(`Tax (${doc.taxRate}%):`, labelX, rightY);
-    pdf.text(formatCurrencyForPdf(doc.taxAmount, doc.currency, currencies), valueX, rightY, { align: 'right' });
-    rightY += 5;
-  }
+  if (t.isInterState) {
+    pdf.text(`Total IGST (${doc.taxRate}%):`, rightLabelX, rightY);
+    pdf.setFont(docFont, 'bold');
+    pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.text(`${t.pdfCurrencySymbol} ${doc.taxAmount.toFixed(2)}`, rightValX, rightY, { align: 'right' });
+    rightY += 4.5;
+  } else {
+    pdf.text(`Total CGST (${t.halfRate}%):`, rightLabelX, rightY);
+    pdf.setFont(docFont, 'bold');
+    pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.text(`${t.pdfCurrencySymbol} ${t.cgstVal.toFixed(2)}`, rightValX, rightY, { align: 'right' });
+    rightY += 4;
 
-  if (doc.shippingCharges > 0) {
-    pdf.text('Shipping & Handling:', labelX, rightY);
-    pdf.text(formatCurrencyForPdf(doc.shippingCharges, doc.currency, currencies), valueX, rightY, { align: 'right' });
+    pdf.setFont(docFont, 'normal');
+    pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+    pdf.text(`Total SGST (${t.halfRate}%):`, rightLabelX, rightY);
+    pdf.setFont(docFont, 'bold');
+    pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.text(`${t.pdfCurrencySymbol} ${t.sgstVal.toFixed(2)}`, rightValX, rightY, { align: 'right' });
     rightY += 4.5;
   }
 
-  // Grand Total Highlight Box
-  pdf.setFillColor(241, 245, 249);
-  pdf.rect(splitX, rightY - 1, contentWidth * 0.44, 7.5, 'F');
+  if (doc.shippingCharges > 0) {
+    pdf.setFont(docFont, 'normal');
+    pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+    pdf.text('Shipping & Handling:', rightLabelX, rightY);
+    pdf.setFont(docFont, 'bold');
+    pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+    pdf.text(`${t.pdfCurrencySymbol} ${doc.shippingCharges.toFixed(2)}`, rightValX, rightY, { align: 'right' });
+    rightY += 4.5;
+  }
+
+  // Grand Total Highlight Double Border Box
+  pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
+  pdf.rect(splitX, rightY - 1, splitRightW, 7, 'F');
+  pdf.setDrawColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.setLineWidth(0.4);
+  pdf.line(splitX, rightY - 1, margin + contentWidth, rightY - 1);
+  pdf.line(splitX, rightY + 6, margin + contentWidth, rightY + 6);
+
   pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(9);
-  pdf.setTextColor(15, 23, 42);
-  pdf.text('Grand Total:', labelX, rightY + 4.2);
-  pdf.text(formatCurrencyForPdf(doc.grandTotal, doc.currency, currencies), valueX, rightY + 4.2, { align: 'right' });
+  pdf.setFontSize(8.5);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text('Grand Total:', rightLabelX, rightY + 3.8);
+  pdf.text(`${t.pdfCurrencySymbol} ${doc.grandTotal.toFixed(2)}`, rightValX, rightY + 3.8, { align: 'right' });
   rightY += 8.5;
 
   if (doc.paidAmount > 0) {
     pdf.setFont(docFont, 'normal');
-    pdf.setFontSize(7.2);
-    pdf.setTextColor(16, 185, 129);
-    pdf.text('Paid Amount:', labelX, rightY);
-    pdf.text(formatCurrencyForPdf(doc.paidAmount, doc.currency, currencies), valueX, rightY, { align: 'right' });
-    rightY += 4;
+    pdf.setFontSize(6.8);
+    pdf.setTextColor(16, 185, 129); // emerald-500
+    pdf.text('Paid Amount:', rightLabelX, rightY);
+    pdf.text(`${t.pdfCurrencySymbol} ${doc.paidAmount.toFixed(2)}`, rightValX, rightY, { align: 'right' });
+    rightY += 3.5;
 
     const balanceDue = Math.max(0, doc.grandTotal - doc.paidAmount);
     pdf.setFont(docFont, 'bold');
-    pdf.setTextColor(220, 38, 38);
-    pdf.text('Balance Due:', labelX, rightY);
-    pdf.text(formatCurrencyForPdf(balanceDue, doc.currency, currencies), valueX, rightY, { align: 'right' });
+    pdf.setTextColor(220, 38, 38); // red-600
+    pdf.text('Balance Due:', rightLabelX, rightY);
+    pdf.text(`${t.pdfCurrencySymbol} ${balanceDue.toFixed(2)}`, rightValX, rightY, { align: 'right' });
   }
 
-  y += totalsSectionH;
+  y += particularsH + 2.5;
 
-  // 8. Declarations & Authorized Signatory Block
-  const bottomSectionH = 32;
-  const sigSplitX = margin + contentWidth * 0.56;
+  // ==========================================
+  // 9. DECLARATIONS, TERMS & DUAL SIGNATURES
+  // ==========================================
+  const bottomBoxH = 26;
+  pdf.setFillColor(255, 255, 255);
+  pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+  pdf.setLineWidth(0.3);
+  pdf.rect(margin, y, contentWidth, bottomBoxH, 'S');
+  pdf.line(splitX, y, splitX, y + bottomBoxH);
 
+  // Left: Declaration & Terms
   pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(7);
-  pdf.setTextColor(71, 85, 105);
-  pdf.text('DECLARATION & TERMS:', margin + 4, y + 5);
+  pdf.setFontSize(6.2);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text('DECLARATION & TERMS:', margin + 3, y + 4);
+
+  pdf.setFont(docFont, 'italic');
+  pdf.setFontSize(6);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  const decLines = pdf.splitTextToSize(t.config.legalDeclaration, splitLeftW - 6);
+  pdf.text(decLines.slice(0, 2), margin + 3, y + 7.5);
 
   pdf.setFont(docFont, 'normal');
-  pdf.setFontSize(6.5);
-  pdf.setTextColor(100, 116, 139);
-  const termsText =
-    doc.terms ||
-    company.terms ||
-    'Certified that goods described in this document are genuine. Discrepancies if any must be reported within 48 hours.';
-  const termsLines = pdf.splitTextToSize(termsText, sigSplitX - margin - 8);
-  pdf.text(termsLines.slice(0, 3), margin + 4, y + 9);
+  pdf.setFontSize(6);
+  pdf.text(`• All matters are subject to ${company.city || 'Mumbai'} Jurisdiction`, margin + 3, y + 14);
 
-  // Receiver's Signature (left)
-  pdf.setDrawColor(203, 213, 225);
-  pdf.line(margin + 4, y + 24, margin + 42, y + 24);
+  // Receiver's Signature line
+  pdf.setDrawColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.line(margin + 5, y + 21, margin + 45, y + 21);
   pdf.setFont(docFont, 'normal');
-  pdf.setFontSize(6.5);
-  pdf.setTextColor(100, 116, 139);
-  pdf.text("Receiver's Signature", margin + 23, y + 28, { align: 'center' });
+  pdf.setFontSize(6.2);
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  pdf.text("Receiver's Signature", margin + 25, y + 24.5, { align: 'center' });
 
-  // Authorized Signatory (Right)
-  pdf.line(sigSplitX, y, sigSplitX, y + bottomSectionH);
-
-  // Company Name above signature (wrapped so it NEVER crosses sigSplitX)
-  const maxSigCompanyW = contentWidth * 0.44 - 6;
+  // Right: Authorized Signatory
   pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(7.2);
-  pdf.setTextColor(15, 23, 42);
-  const forCompText = `FOR ${company.name || 'COMPANY NAME'}`;
-  const forCompLines = pdf.splitTextToSize(forCompText, maxSigCompanyW);
-  let forCompY = y + 5;
-  forCompLines.slice(0, 2).forEach((line: string) => {
-    pdf.text(line, pageWidth - margin - 4, forCompY, { align: 'right' });
-    forCompY += 3.5;
-  });
+  pdf.setFontSize(6.8);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  const forCompText = `FOR ${company.name || 'SUTRAA CREATIONS PRIVATE LIMITED'}`;
+  pdf.text(forCompText, margin + contentWidth - 3, y + 4, { align: 'right' });
+
+  pdf.setFont(docFont, 'normal');
+  pdf.setFontSize(5.8);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text('Authorized Signatory', margin + contentWidth - 3, y + 7, { align: 'right' });
 
   // Stamp & Signature Images
   const stampUrl = doc.includeStamp !== false ? doc.stampUrl || company.stampUrl : null;
@@ -592,10 +753,10 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
 
   if (stampUrl) {
     try {
-      pdf.addImage(stampUrl, 'PNG', sigSplitX + 6, y + 7, 16, 16);
+      pdf.addImage(stampUrl, 'PNG', splitX + 6, y + 6, 14, 14);
     } catch {
       try {
-        pdf.addImage(stampUrl, 'JPEG', sigSplitX + 6, y + 7, 16, 16);
+        pdf.addImage(stampUrl, 'JPEG', splitX + 6, y + 6, 14, 14);
       } catch (e) {
         console.warn('Could not add stamp to PDF', e);
       }
@@ -604,44 +765,42 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
 
   if (signatureUrl) {
     try {
-      pdf.addImage(signatureUrl, 'PNG', pageWidth - margin - 38, y + 7, 32, 13);
+      pdf.addImage(signatureUrl, 'PNG', margin + contentWidth - 38, y + 8, 28, 11);
     } catch {
       try {
-        pdf.addImage(signatureUrl, 'JPEG', pageWidth - margin - 38, y + 7, 32, 13);
+        pdf.addImage(signatureUrl, 'JPEG', margin + contentWidth - 38, y + 8, 28, 11);
       } catch (e) {
         console.warn('Could not add signature to PDF', e);
       }
     }
   }
 
-  pdf.line(pageWidth - margin - 46, y + 24, pageWidth - margin - 4, y + 24);
+  // Signatory Line and Name
+  pdf.setDrawColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.line(margin + contentWidth - 48, y + 21, margin + contentWidth - 4, y + 21);
   pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(7);
-  pdf.setTextColor(30, 41, 59);
-  const signatoryName = doc.authorizedSignatoryName || company.authorizedSignatoryName || 'Authorized Signatory';
-  pdf.text(signatoryName, pageWidth - margin - 25, y + 28, { align: 'center' });
+  pdf.setFontSize(6.4);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(t.signatoryName, margin + contentWidth - 26, y + 24.5, { align: 'center' });
 
-  // 9. Computer-Generated Notice Footer
+  // ==========================================
+  // 10. BOTTOM COMPUTER-GENERATED NOTICE
+  // ==========================================
   pdf.setFont(docFont, 'italic');
-  pdf.setFontSize(6.5);
-  pdf.setTextColor(148, 163, 184);
-  pdf.text(
-    `This is a computer-generated document issued for corporate operations. Standard A4 format.`,
-    pageWidth / 2,
-    pageHeight - margin - 2,
-    { align: 'center' }
-  );
+  pdf.setFontSize(6);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text(t.config.footerNotice, pageWidth / 2, 292, { align: 'center' });
 
   return pdf;
 }
 
-export function downloadDocumentPdf(doc: Document, company: CompanyProfile, currencies: CurrencyConfig[]): void {
+export function downloadDocumentPdf(doc: Document, company: CompanyProfile, currencies: CurrencyConfig[] = []): void {
   const pdf = generateDocumentPdf(doc, company, currencies);
   const fileName = `${doc.documentNumber}_${doc.clientCompany || doc.clientName}`.replace(/[^a-zA-Z0-9_-]/g, '_') + '.pdf';
   pdf.save(fileName);
 }
 
-export function generateDocumentPdfBlob(doc: Document, company: CompanyProfile, currencies: CurrencyConfig[]): Blob {
+export function generateDocumentPdfBlob(doc: Document, company: CompanyProfile, currencies: CurrencyConfig[] = []): Blob {
   const pdf = generateDocumentPdf(doc, company, currencies);
   return pdf.output('blob');
 }
