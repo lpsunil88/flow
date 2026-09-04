@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CompanyProfile, CurrencyConfig, Document, StaffUser } from '../types';
-import { downloadDocumentPdf, generateDocumentPdfBlob } from '../services/pdfGenerator';
+import { downloadDocumentPdf, generateDocumentPdfBlob, formatCurrency } from '../services/pdfGenerator';
 import { uploadPdfToDrive } from '../services/googleDrive';
 import { A4DocumentSheet } from './A4DocumentSheet';
 import { 
@@ -42,6 +42,100 @@ export const DocumentViewModal: React.FC<DocumentViewModalProps> = ({
     downloadDocumentPdf(doc, company, currencies);
   };
 
+  const handlePrintA4 = () => {
+    const sheetElement = document.getElementById('a4-printable-sheet');
+    if (!sheetElement) {
+      window.print();
+      return;
+    }
+
+    // Create an isolated hidden iframe for printing
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    // Extract stylesheets so print iframe matches exact styling
+    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map((el) => el.outerHTML)
+      .join('\n');
+
+    const printHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>${doc.documentNumber}_${doc.clientCompany || doc.clientName}</title>
+          ${styles}
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              color: #0f172a !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .a4-sheet-container {
+              width: 210mm !important;
+              max-width: 210mm !important;
+              min-height: 297mm !important;
+              box-sizing: border-box !important;
+              padding: 10mm 12mm !important;
+              margin: 0 auto !important;
+              border: none !important;
+              box-shadow: none !important;
+              background: #ffffff !important;
+              page-break-inside: avoid !important;
+              page-break-after: avoid !important;
+            }
+            .no-print {
+              display: none !important;
+            }
+          </style>
+        </head>
+        <body>
+          <div style="width: 210mm; margin: 0 auto; box-sizing: border-box;">
+            ${sheetElement.outerHTML}
+          </div>
+        </body>
+      </html>
+    `;
+
+    const iframeDoc = iframe.contentWindow?.document;
+    if (iframeDoc) {
+      iframeDoc.open();
+      iframeDoc.write(printHtml);
+      iframeDoc.close();
+
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch (e) {
+          console.warn('Iframe print fallback to window.print', e);
+          window.print();
+        } finally {
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          }, 2000);
+        }
+      }, 350);
+    } else {
+      window.print();
+    }
+  };
+
   const handleSyncToDrive = async () => {
     if (!driveAccessToken) {
       alert('Please connect Google Drive using the "Sign in with Google" button in the navigation bar first.');
@@ -74,8 +168,8 @@ export const DocumentViewModal: React.FC<DocumentViewModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/75 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl my-auto overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150 print:border-none print:shadow-none print:max-w-none print:w-full print:rounded-none">
+    <div className="document-view-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/75 backdrop-blur-xs overflow-y-auto print:static print:p-0 print:m-0 print:bg-white print:overflow-visible print:block">
+      <div className="document-view-modal-content bg-white rounded-xl shadow-2xl w-full max-w-5xl my-auto overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150 print:border-none print:shadow-none print:max-w-none print:w-full print:rounded-none print:overflow-visible print:m-0 print:p-0">
         
         {/* Top Control Bar */}
         <div className="px-4 sm:px-6 py-3 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3 sticky top-0 z-20 no-print">
@@ -99,7 +193,7 @@ export const DocumentViewModal: React.FC<DocumentViewModalProps> = ({
           <div className="flex items-center flex-wrap gap-2">
             {/* Print A4 Sheet */}
             <button
-              onClick={() => window.print()}
+              onClick={handlePrintA4}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors border border-slate-700 cursor-pointer"
               title="Print standard A4 sheet"
             >
@@ -179,7 +273,7 @@ export const DocumentViewModal: React.FC<DocumentViewModalProps> = ({
             Status: <span className="font-bold uppercase text-slate-800">{doc.status}</span>
             {balanceDue > 0 && doc.type === 'invoice' && (
               <span className="ml-3 text-red-600 font-semibold">
-                Balance Due: ₹{balanceDue.toFixed(2)}
+                Balance Due: {formatCurrency(balanceDue, doc.currency, currencies)}
               </span>
             )}
           </div>

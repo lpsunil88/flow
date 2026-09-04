@@ -1,6 +1,6 @@
 import React from 'react';
 import { CompanyProfile, CurrencyConfig, Document } from '../types';
-import { formatCurrency } from '../services/pdfGenerator';
+import { formatCurrency, getCurrencySymbol } from '../services/pdfGenerator';
 import { formatAmountToWords, getStateDisplay } from '../utils/numberToWords';
 
 interface A4DocumentSheetProps {
@@ -97,6 +97,8 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
   const cgstVal = doc.cgstAmount ?? halfTax;
   const sgstVal = doc.sgstAmount ?? halfTax;
 
+  const currencySymbol = getCurrencySymbol(doc.currency || company.defaultCurrency || 'INR', currencies);
+
   const signatoryName =
     doc.authorizedSignatoryName ||
     company.authorizedSignatoryName ||
@@ -105,7 +107,7 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
   return (
     <div
       id="a4-printable-sheet"
-      className="a4-sheet-container w-full max-w-[210mm] min-h-[297mm] mx-auto bg-white text-slate-900 shadow-xl border border-slate-200 p-8 sm:p-10 relative font-sans text-xs box-border print:border-none print:shadow-none print:p-6 print:w-[210mm] print:min-h-[297mm] print:m-0"
+      className="a4-sheet-container w-full max-w-[210mm] min-h-[297mm] mx-auto bg-white text-slate-900 shadow-xl border border-slate-200 p-8 sm:p-10 relative font-sans text-xs box-border print:border-none print:shadow-none print:p-6 print:w-[210mm] print:max-w-[210mm] print:m-0 print:box-border"
       style={{
         boxSizing: 'border-box',
       }}
@@ -120,7 +122,7 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
         </span>
       </div>
 
-      <div className="relative z-10 flex flex-col justify-between min-h-[275mm]">
+      <div className="relative z-10 flex flex-col justify-between flex-1 min-h-0">
         {/* TOP SECTION */}
         <div>
           {/* Top Document Category & Title Banner */}
@@ -400,12 +402,12 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
                   <th className="py-2 px-2 text-center w-24 border-r border-slate-300">HSN/SAC</th>
                   <th className="py-2 px-2 text-center w-12 border-r border-slate-300">Qty</th>
                   <th className="py-2 px-2 text-center w-14 border-r border-slate-300">UOM</th>
-                  <th className="py-2 px-2 text-right w-20 border-r border-slate-300">Rate (₹)</th>
-                  <th className="py-2 px-2 text-right w-24 border-r border-slate-300">Taxable Val (₹)</th>
+                  <th className="py-2 px-2 text-right w-20 border-r border-slate-300">Rate ({currencySymbol})</th>
+                  <th className="py-2 px-2 text-right w-24 border-r border-slate-300">Taxable Val ({currencySymbol})</th>
                   <th className="py-2 px-2 text-right w-24 border-r border-slate-300">
-                    {isInterState ? 'IGST (₹)' : 'Tax (₹)'}
+                    {isInterState ? `IGST (${currencySymbol})` : `Tax (${currencySymbol})`}
                   </th>
-                  <th className="py-2 px-2 text-right w-24">Total (₹)</th>
+                  <th className="py-2 px-2 text-right w-24">Total ({currencySymbol})</th>
                 </tr>
               </thead>
 
@@ -443,20 +445,20 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
                       </td>
 
                       <td className="py-2.5 px-2 text-right font-mono text-slate-700 border-r border-slate-200">
-                        ₹{item.unitPrice.toFixed(2)}
+                        {currencySymbol} {item.unitPrice.toFixed(2)}
                       </td>
 
                       <td className="py-2.5 px-2 text-right font-mono font-semibold text-slate-900 border-r border-slate-200">
-                        ₹{item.amount.toFixed(2)}
+                        {currencySymbol} {item.amount.toFixed(2)}
                       </td>
 
                       <td className="py-2.5 px-2 text-right font-mono text-slate-700 border-r border-slate-200">
-                        ₹{item.taxAmount.toFixed(2)}{' '}
+                        {currencySymbol} {item.taxAmount.toFixed(2)}{' '}
                         <span className="text-[9.5px] text-slate-500">({item.taxRate}%)</span>
                       </td>
 
                       <td className="py-2.5 px-2 text-right font-mono font-bold text-slate-950">
-                        ₹{item.total.toFixed(2)}
+                        {currencySymbol} {item.total.toFixed(2)}
                       </td>
                     </tr>
                   ))
@@ -473,13 +475,13 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
                   <td className="border-r border-slate-300"></td>
                   <td className="border-r border-slate-300"></td>
                   <td className="py-2 px-2 text-right font-mono font-bold text-slate-950 border-r border-slate-300">
-                    ₹{doc.subtotal.toFixed(2)}
+                    {currencySymbol} {doc.subtotal.toFixed(2)}
                   </td>
                   <td className="py-2 px-2 text-right font-mono font-bold text-slate-950 border-r border-slate-300">
-                    ₹{doc.taxAmount.toFixed(2)}
+                    {currencySymbol} {doc.taxAmount.toFixed(2)}
                   </td>
                   <td className="py-2 px-2 text-right font-mono font-bold text-slate-950">
-                    ₹{doc.grandTotal.toFixed(2)}
+                    {currencySymbol} {doc.grandTotal.toFixed(2)}
                   </td>
                 </tr>
               </tbody>
@@ -517,7 +519,7 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
               <div className="flex justify-between text-slate-700">
                 <span>Total Taxable Value:</span>
                 <span className="font-mono font-semibold text-slate-900">
-                  ₹{doc.subtotal.toFixed(2)}
+                  {currencySymbol} {doc.subtotal.toFixed(2)}
                 </span>
               </div>
 
@@ -525,7 +527,7 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
                 <div className="flex justify-between text-slate-700">
                   <span>Total IGST:</span>
                   <span className="font-mono font-semibold text-slate-900">
-                    ₹{doc.taxAmount.toFixed(2)}
+                    {currencySymbol} {doc.taxAmount.toFixed(2)}
                   </span>
                 </div>
               ) : (
@@ -533,13 +535,13 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
                   <div className="flex justify-between text-slate-700">
                     <span>Total CGST:</span>
                     <span className="font-mono font-semibold text-slate-900">
-                      ₹{cgstVal.toFixed(2)}
+                      {currencySymbol} {cgstVal.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between text-slate-700">
                     <span>Total SGST:</span>
                     <span className="font-mono font-semibold text-slate-900">
-                      ₹{sgstVal.toFixed(2)}
+                      {currencySymbol} {sgstVal.toFixed(2)}
                     </span>
                   </div>
                 </>
@@ -549,14 +551,14 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
                 <div className="flex justify-between text-slate-700">
                   <span>Shipping & Handling:</span>
                   <span className="font-mono font-semibold text-slate-900">
-                    ₹{doc.shippingCharges.toFixed(2)}
+                    {currencySymbol} {doc.shippingCharges.toFixed(2)}
                   </span>
                 </div>
               )}
 
               <div className="flex justify-between items-center text-sm font-bold text-slate-950 border-t-2 border-b-2 border-slate-950 py-1.5 mt-1">
                 <span>Grand Total:</span>
-                <span className="font-mono text-base">₹{doc.grandTotal.toFixed(2)}</span>
+                <span className="font-mono text-base">{currencySymbol} {doc.grandTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>
