@@ -210,118 +210,201 @@ export const A4DocumentSheet: React.FC<A4DocumentSheetProps> = ({
 
           <div className="h-[1px] bg-transparent w-full my-2" />
 
-          {/* Consignor (Dispatch Location) & Consignee (Recipient) Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-            {/* Consignor Card */}
+          {/* Row 1: Seller / Consignor (Dispatch Location) & Buyer (Billed To) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2.5">
+            {/* Seller / Consignor Card */}
             <div className={`${
               layout === 'classic'
-                ? 'border border-slate-400 rounded-none p-2.5 bg-white text-[11px] space-y-1'
+                ? 'border border-slate-400 rounded-none p-2.5 bg-white text-[11px] space-y-1 min-h-[112px] flex flex-col justify-between'
                 : layout === 'minimalist'
-                ? 'border-t border-slate-300 pt-2 bg-transparent text-[11px] space-y-1'
-                : `border ${colors.borderStandard.tailwindBorder} rounded-lg p-2.5 bg-white text-[11px] space-y-1 shadow-2xs`
+                ? 'border-t border-slate-300 pt-2 bg-transparent text-[11px] space-y-1 min-h-[105px] flex flex-col justify-between'
+                : `border ${colors.borderStandard.tailwindBorder} rounded-lg p-2.5 bg-white text-[11px] space-y-1 shadow-2xs min-h-[112px] flex flex-col justify-between`
             }`}>
-              <div className="flex justify-between items-center border-b border-slate-200 pb-1 text-[10px] font-bold text-slate-700">
-                <span className="uppercase tracking-wider">
-                  {t.config.sellerCardTitle}
-                </span>
-                <span className={`${fonts.monoFont} text-slate-900`}>
-                  STATE: {t.consignorState.code}
-                </span>
+              <div className="space-y-1">
+                <div className="flex justify-between items-center border-b border-slate-200 pb-1 text-[10px] font-bold text-slate-700">
+                  <span className="uppercase tracking-wider">
+                    {t.config.sellerCardTitle}
+                  </span>
+                  <span className={`${fonts.monoFont} text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-[9.5px]`}>
+                    STATE: {t.consignorState.code}
+                  </span>
+                </div>
+
+                <div className="font-bold text-slate-950 text-[11.5px] pt-0.5">
+                  {t.sellerTitle}
+                </div>
+
+                <div className="text-slate-600 leading-snug whitespace-pre-line break-words">
+                  {t.sellerAddr}
+                </div>
+                <div className="text-slate-600 font-medium">
+                  {t.sellerCity}
+                </div>
               </div>
 
-              <div className="font-bold text-slate-950 text-[11.5px] pt-0.5">
-                {t.sellerTitle}
-              </div>
-
-              <div className="text-slate-600 leading-tight">
-                {t.sellerAddr}
-              </div>
-              <div className="text-slate-600">
-                {t.sellerCity}
-              </div>
-
-              <div className="text-slate-900 pt-0.5">
-                <strong className="font-semibold">GSTIN:</strong>{' '}
-                <span className={fonts.monoFont}>
-                  {t.sellerGstin}
-                </span>
-              </div>
-
-              <div className="text-slate-700">
-                <strong className="font-semibold">Contact:</strong>{' '}
-                {t.sellerContact}
+              <div className="pt-1.5 border-t border-slate-100 space-y-0.5 text-[10.5px]">
+                <div className="text-slate-900">
+                  <strong className="font-semibold text-slate-700">GSTIN:</strong>{' '}
+                  <span className={fonts.monoFont}>{t.sellerGstin}</span>
+                </div>
+                <div className="text-slate-700">
+                  <strong className="font-semibold">Contact:</strong> {t.sellerContact}
+                </div>
               </div>
             </div>
 
-            {/* Consignee Card */}
+            {/* Buyer (Billed To) Card */}
             <div className={`${
               layout === 'classic'
-                ? 'border border-slate-400 rounded-none p-2.5 bg-white text-[11px] space-y-1'
+                ? 'border border-slate-400 rounded-none p-2.5 bg-white text-[11px] space-y-1 min-h-[112px] flex flex-col justify-between'
                 : layout === 'minimalist'
-                ? 'border-t border-slate-300 pt-2 bg-transparent text-[11px] space-y-1'
-                : `border ${colors.borderStandard.tailwindBorder} rounded-lg p-2.5 bg-white text-[11px] space-y-1 shadow-2xs`
+                ? 'border-t border-slate-300 pt-2 bg-transparent text-[11px] space-y-1 min-h-[105px] flex flex-col justify-between'
+                : `border ${colors.borderStandard.tailwindBorder} rounded-lg p-2.5 bg-white text-[11px] space-y-1 shadow-2xs min-h-[112px] flex flex-col justify-between`
             }`}>
-              <div className="flex justify-between items-center border-b border-slate-200 pb-1 text-[10px] font-bold text-slate-700">
-                <span className="uppercase tracking-wider">
-                  {t.config.buyerCardTitle}
-                </span>
-                <span className={`${fonts.monoFont} text-slate-900`}>
-                  STATE: {t.consigneeState.code}
-                </span>
+              <div className="space-y-1">
+                <div className="flex justify-between items-center border-b border-slate-200 pb-1 text-[10px] font-bold text-slate-700">
+                  <span className="uppercase tracking-wider">
+                    {t.config.buyerCardTitle}
+                  </span>
+                  <span className={`${fonts.monoFont} text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-[9.5px]`}>
+                    STATE: {t.billedToState.code}
+                  </span>
+                </div>
+
+                <div className="font-bold text-slate-950 text-[11.5px] pt-0.5">
+                  {t.buyerTitle}
+                </div>
+
+                <div className="text-slate-600 leading-snug whitespace-pre-line break-words">
+                  {t.buyerAddr}
+                </div>
+                <div className="text-slate-600 font-medium">
+                  {t.buyerCity}
+                </div>
               </div>
 
-              <div className="font-bold text-slate-950 text-[11.5px] pt-0.5">
-                {t.buyerTitle}
-                {doc.shippingAddress?.company && doc.shippingAddress.company !== doc.clientName && (
-                  <span className="text-slate-500 font-normal"> ({doc.clientName})</span>
-                )}
-              </div>
-
-              <div className="text-slate-600 leading-tight">
-                {t.buyerAddr}
-              </div>
-              <div className="text-slate-600">
-                {t.buyerCity}
-              </div>
-
-              <div className="text-slate-900 pt-0.5">
-                <strong className="font-semibold">GSTIN:</strong>{' '}
-                <span className={fonts.monoFont}>{t.buyerGstin}</span>
-              </div>
-
-              <div className="text-slate-700">
-                <strong className="font-semibold">Place of Supply:</strong>{' '}
-                <span>{t.consigneeState.code}-{t.consigneeState.name}</span>
+              <div className="pt-1.5 border-t border-slate-100 space-y-0.5 text-[10.5px]">
+                <div className="text-slate-900">
+                  <strong className="font-semibold text-slate-700">GSTIN:</strong>{' '}
+                  <span className={fonts.monoFont}>{t.buyerGstin}</span>
+                </div>
+                <div className="text-slate-700 flex justify-between items-center">
+                  <div>
+                    <strong className="font-semibold">Place of Supply:</strong>{' '}
+                    <span>{t.buyerPlaceOfSupply}</span>
+                  </div>
+                  {t.buyerContact && (
+                    <span className="text-slate-500 text-[10px]">{t.buyerContact}</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Transport / Logistics Details Strip */}
-          <div className={`${
-            layout === 'classic'
-              ? 'border border-slate-400 rounded-none px-3 py-1.5 bg-slate-50 text-[10.5px] text-slate-700 flex flex-wrap justify-between items-center gap-2 mb-3'
-              : layout === 'minimalist'
-              ? 'border-y border-slate-200 px-1 py-1.5 bg-transparent text-[10.5px] text-slate-700 flex flex-wrap justify-between items-center gap-2 mb-3'
-              : `border ${colors.borderStandard.tailwindBorder} rounded-lg px-3 py-1.5 bg-white text-[10.5px] text-slate-700 flex flex-wrap justify-between items-center gap-2 mb-3 shadow-2xs`
-          }`}>
-            <div>
-              <span className="text-slate-500 font-medium">Transport Mode: </span>
-              <strong className="font-semibold text-slate-900">{t.transportMode}</strong>
+          {/* Row 2: Consignee (Shipped To) & Transport / Logistics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            {/* Consignee (Shipped To) Card - Large, spacious box for complete address */}
+            <div className={`${
+              layout === 'classic'
+                ? 'border border-slate-400 rounded-none p-2.5 bg-white text-[11px] space-y-1 min-h-[112px] flex flex-col justify-between'
+                : layout === 'minimalist'
+                ? 'border-t border-slate-300 pt-2 bg-transparent text-[11px] space-y-1 min-h-[105px] flex flex-col justify-between'
+                : `border ${colors.borderStandard.tailwindBorder} rounded-lg p-2.5 bg-white text-[11px] space-y-1 shadow-2xs min-h-[112px] flex flex-col justify-between`
+            }`}>
+              <div className="space-y-1">
+                <div className="flex justify-between items-center border-b border-slate-200 pb-1 text-[10px] font-bold text-slate-700">
+                  <div className="flex items-center gap-1.5">
+                    <span className="uppercase tracking-wider">
+                      {t.config.shipToCardTitle}
+                    </span>
+                    {t.hasDistinctShipTo && (
+                      <span className="text-[9px] font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 px-1 rounded">
+                        Distinct Site
+                      </span>
+                    )}
+                  </div>
+                  <span className={`${fonts.monoFont} text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded text-[9.5px]`}>
+                    STATE: {t.shipToState.code}
+                  </span>
+                </div>
+
+                <div className="font-bold text-slate-950 text-[11.5px] pt-0.5">
+                  {t.shipToTitle}
+                </div>
+
+                <div className="text-slate-600 leading-snug whitespace-pre-line break-words">
+                  {t.shipToAddr}
+                </div>
+                <div className="text-slate-600 font-medium">
+                  {t.shipToCity}
+                </div>
+              </div>
+
+              <div className="pt-1.5 border-t border-slate-100 space-y-0.5 text-[10.5px]">
+                <div className="text-slate-900">
+                  <strong className="font-semibold text-slate-700">GSTIN:</strong>{' '}
+                  <span className={fonts.monoFont}>{t.shipToGstin}</span>
+                </div>
+                <div className="text-slate-700 flex justify-between items-center">
+                  <div>
+                    <strong className="font-semibold">Delivery State:</strong>{' '}
+                    <span>{t.shipToPlaceOfSupply}</span>
+                  </div>
+                  {t.shipToContact && (
+                    <span className="text-slate-500 text-[10px]">{t.shipToContact}</span>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div>
-              <span className="text-slate-500 font-medium">Transporter: </span>
-              <strong className="font-semibold text-slate-900">{t.transporterName}</strong>
-            </div>
+            {/* Transport / Logistics & Dispatch Details Card */}
+            <div className={`${
+              layout === 'classic'
+                ? 'border border-slate-400 rounded-none p-2.5 bg-slate-50/70 text-[10.5px] space-y-1.5 min-h-[112px] flex flex-col justify-between'
+                : layout === 'minimalist'
+                ? 'border-t border-slate-300 pt-2 bg-transparent text-[10.5px] space-y-1.5 min-h-[105px] flex flex-col justify-between'
+                : `border ${colors.borderStandard.tailwindBorder} rounded-lg p-2.5 bg-slate-50/60 text-[10.5px] space-y-1.5 shadow-2xs min-h-[112px] flex flex-col justify-between`
+            }`}>
+              <div>
+                <div className="flex justify-between items-center border-b border-slate-200 pb-1 text-[10px] font-bold text-slate-700">
+                  <span className="uppercase tracking-wider">
+                    {t.config.transportCardTitle}
+                  </span>
+                  <span className="text-[9.5px] text-slate-600 font-medium">
+                    PURPOSE: {t.config.defaultPurpose}
+                  </span>
+                </div>
 
-            <div>
-              <span className="text-slate-500 font-medium">LR/GR No & Date: </span>
-              <strong className="font-semibold text-slate-900">{t.lrGrText}</strong>
-            </div>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 pt-1.5">
+                  <div>
+                    <span className="text-slate-500 block text-[9.5px] uppercase">Transport Mode</span>
+                    <strong className="font-semibold text-slate-900 text-[11px]">{t.transportMode}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[9.5px] uppercase">Vehicle Number</span>
+                    <strong className={`${fonts.monoFont} font-semibold text-slate-900 text-[11px]`}>
+                      {doc.challanDetails?.vehicleNo || 'N/A'}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[9.5px] uppercase">Transporter / Note</span>
+                    <span className="font-medium text-slate-800 text-[10.5px] truncate block">
+                      {t.transporterName}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[9.5px] uppercase">LR / GR / Tracking</span>
+                    <span className={`${fonts.monoFont} font-medium text-slate-800 text-[10.5px]`}>
+                      {t.lrGrText}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-            <div>
-              <span className="text-slate-500 font-medium">Driver/Contact: </span>
-              <strong className="font-semibold text-slate-900">{t.driverText}</strong>
+              <div className="pt-1.5 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-600">
+                <span><strong>Date & Time:</strong> {t.formattedDateTime}</span>
+                <span><strong>Handling:</strong> {t.driverText}</span>
+              </div>
             </div>
           </div>
 

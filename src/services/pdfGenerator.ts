@@ -331,37 +331,49 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
   y += stripH + 2.5;
 
   // ==========================================
-  // 4. TWIN SELLER / BUYER (CONSIGNOR / CONSIGNEE) CARDS
+  // 4. ROW 1: SELLER / CONSIGNOR & BUYER (BILLED TO) CARDS
   // ==========================================
   const cardW = (contentWidth - 4) / 2; // 93mm each
-  const cardH = 26;
   const rightCardX = margin + cardW + 4;
 
+  // Measure content lines to compute dynamic, overlap-free card heights
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(7.5);
+  const sellerTitleLines = pdf.splitTextToSize(t.sellerTitle, cardW - 6);
+  const buyerTitleLines = pdf.splitTextToSize(t.buyerTitle, cardW - 6);
+
+  pdf.setFont(docFont, 'normal');
+  pdf.setFontSize(6.4);
+  const sellerAddrLines = pdf.splitTextToSize(t.sellerAddr, cardW - 6);
+  const buyerAddrLines = pdf.splitTextToSize(t.buyerAddr, cardW - 6);
+
+  const sellerNeededH = 7.5 + (sellerTitleLines.length * 3.4) + (sellerAddrLines.length * 3.0) + 3.0 + 3.0 + 3.0 + 3;
+  const buyerNeededH = 7.5 + (buyerTitleLines.length * 3.4) + (buyerAddrLines.length * 3.0) + 3.0 + 3.0 + 3.0 + 3;
+  const row1H = Math.max(sellerNeededH, buyerNeededH, 31);
+
   if (layout === 'classic') {
-    // Sharp rectangular enterprise boxes with solid borders
     pdf.setFillColor(255, 255, 255);
     pdf.setDrawColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
     pdf.setLineWidth(0.4);
-    pdf.rect(margin, y, cardW, cardH, 'FD');
-    pdf.rect(rightCardX, y, cardW, cardH, 'FD');
+    pdf.rect(margin, y, cardW, row1H, 'FD');
+    pdf.rect(rightCardX, y, cardW, row1H, 'FD');
 
     // Header bars
     pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
     pdf.rect(margin, y, cardW, 5, 'FD');
     pdf.rect(rightCardX, y, cardW, 5, 'FD');
   } else if (layout === 'minimalist') {
-    // Clean unboxed studio layout with hairline dividers
     pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
     pdf.setLineWidth(0.2);
     pdf.line(margin, y + 5, margin + cardW, y + 5);
     pdf.line(rightCardX, y + 5, rightCardX + cardW, y + 5);
   } else {
-    // Modern executive rounded cards
+    // Modern executive cards
     pdf.setFillColor(255, 255, 255);
     pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
     pdf.setLineWidth(0.3);
-    pdf.roundedRect(margin, y, cardW, cardH, 1.2, 1.2, 'FD');
-    pdf.roundedRect(rightCardX, y, cardW, cardH, 1.2, 1.2, 'FD');
+    pdf.roundedRect(margin, y, cardW, row1H, 1.2, 1.2, 'FD');
+    pdf.roundedRect(rightCardX, y, cardW, row1H, 1.2, 1.2, 'FD');
 
     // Header bars
     pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
@@ -372,145 +384,240 @@ export function generateDocumentPdf(doc: Document, company: CompanyProfile, curr
     pdf.line(rightCardX, y + 5, rightCardX + cardW, y + 5);
   }
 
-  // Left Card Header text
+  // Row 1 - Left Card (Seller / Consignor)
   pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(6.5);
+  pdf.setFontSize(6.4);
   pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
   pdf.text(t.config.sellerCardTitle, margin + 2.5, y + 3.5);
   pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
   pdf.text(`STATE: ${t.consignorState.code}`, margin + cardW - 2.5, y + 3.5, { align: 'right' });
 
-  // Left Card Body
-  let cardLeftY = y + 8.2;
+  let curSellerY = y + 8.2;
   pdf.setFont(docFont, 'bold');
   pdf.setFontSize(7.5);
   pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
-  pdf.text(pdf.splitTextToSize(t.sellerTitle, cardW - 5)[0], margin + 2.5, cardLeftY);
-  cardLeftY += 3.4;
-
-  pdf.setFont(docFont, 'normal');
-  pdf.setFontSize(6.5);
-  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
-  pdf.text(pdf.splitTextToSize(t.sellerAddr, cardW - 5)[0], margin + 2.5, cardLeftY);
-  cardLeftY += 3.2;
-
-  pdf.text(t.sellerCity, margin + 2.5, cardLeftY);
-  cardLeftY += 3.4;
-
-  pdf.setFont(docFont, 'bold');
-  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
-  pdf.text('GSTIN: ', margin + 2.5, cardLeftY);
-  pdf.setFont(docFont, 'normal');
-  pdf.text(t.sellerGstin, margin + 11.5, cardLeftY);
-  cardLeftY += 3.2;
-
-  pdf.setFont(docFont, 'bold');
-  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
-  pdf.text('Contact: ', margin + 2.5, cardLeftY);
-  pdf.setFont(docFont, 'normal');
-  pdf.text(pdf.splitTextToSize(t.sellerContact, cardW - 16)[0], margin + 13.5, cardLeftY);
-
-  // Right Card Header text
-  pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(6.5);
-  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
-  pdf.text(t.config.buyerCardTitle, rightCardX + 2.5, y + 3.5);
-  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
-  pdf.text(`STATE: ${t.consigneeState.code}`, rightCardX + cardW - 2.5, y + 3.5, { align: 'right' });
-
-  // Right Card Body
-  let cardRightY = y + 8.2;
-  pdf.setFont(docFont, 'bold');
-  pdf.setFontSize(7.5);
-  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
-  pdf.text(pdf.splitTextToSize(t.buyerTitle, cardW - 5)[0], rightCardX + 2.5, cardRightY);
-  cardRightY += 3.4;
-
-  pdf.setFont(docFont, 'normal');
-  pdf.setFontSize(6.5);
-  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
-  pdf.text(pdf.splitTextToSize(t.buyerAddr, cardW - 5)[0], rightCardX + 2.5, cardRightY);
-  cardRightY += 3.2;
-
-  pdf.text(t.buyerCity, rightCardX + 2.5, cardRightY);
-  cardRightY += 3.4;
-
-  pdf.setFont(docFont, 'bold');
-  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
-  pdf.text('GSTIN: ', rightCardX + 2.5, cardRightY);
-  pdf.setFont(docFont, 'normal');
-  pdf.text(t.buyerGstin, rightCardX + 11.5, cardRightY);
-  cardRightY += 3.2;
-
-  pdf.setFont(docFont, 'bold');
-  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
-  pdf.text('Place of Supply: ', rightCardX + 2.5, cardRightY);
-  pdf.setFont(docFont, 'normal');
-  pdf.text(`${t.consigneeState.code}-${t.consigneeState.name}`, rightCardX + 22, cardRightY);
-
-  y += cardH + 2.5;
-
-  // ==========================================
-  // 5. TRANSPORT / LOGISTICS DETAILS STRIP
-  // ==========================================
-  const transH = 6;
-  const transItemW = contentWidth / 4;
-
-  if (layout === 'classic') {
-    pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
-    pdf.setDrawColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
-    pdf.setLineWidth(0.4);
-    pdf.rect(margin, y, contentWidth, transH, 'FD');
-    for (let i = 1; i < 4; i++) {
-      pdf.line(margin + transItemW * i, y, margin + transItemW * i, y + transH);
-    }
-  } else if (layout === 'minimalist') {
-    pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
-    pdf.setLineWidth(0.2);
-    pdf.line(margin, y, margin + contentWidth, y);
-    pdf.line(margin, y + transH, margin + contentWidth, y + transH);
-  } else {
-    pdf.setFillColor(255, 255, 255);
-    pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
-    pdf.setLineWidth(0.3);
-    pdf.roundedRect(margin, y, contentWidth, transH, 1, 1, 'FD');
+  for (const line of sellerTitleLines) {
+    pdf.text(line, margin + 2.5, curSellerY);
+    curSellerY += 3.4;
   }
 
   pdf.setFont(docFont, 'normal');
-  pdf.setFontSize(6.6);
-  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.setFontSize(6.4);
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  for (const line of sellerAddrLines) {
+    pdf.text(line, margin + 2.5, curSellerY);
+    curSellerY += 3.0;
+  }
 
-  // Item 1: Transport Mode
-  pdf.text('Transport Mode: ', margin + 2.5, y + 4.1);
+  if (t.sellerCity) {
+    pdf.text(t.sellerCity, margin + 2.5, curSellerY);
+    curSellerY += 3.0;
+  }
+
   pdf.setFont(docFont, 'bold');
   pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
-  pdf.text(t.transportMode, margin + 20, y + 4.1);
+  pdf.text('GSTIN: ', margin + 2.5, curSellerY);
+  pdf.setFont(docFont, 'normal');
+  pdf.text(t.sellerGstin, margin + 11.5, curSellerY);
+  curSellerY += 3.0;
 
-  // Item 2: Transporter
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  pdf.text('Contact: ', margin + 2.5, curSellerY);
+  pdf.setFont(docFont, 'normal');
+  pdf.text(pdf.splitTextToSize(t.sellerContact, cardW - 16)[0], margin + 13.5, curSellerY);
+
+  // Row 1 - Right Card (Buyer / Billed To)
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(6.4);
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  pdf.text(t.config.buyerCardTitle, rightCardX + 2.5, y + 3.5);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(`STATE: ${t.billedToState.code}`, rightCardX + cardW - 2.5, y + 3.5, { align: 'right' });
+
+  let curBuyerY = y + 8.2;
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(7.5);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  for (const line of buyerTitleLines) {
+    pdf.text(line, rightCardX + 2.5, curBuyerY);
+    curBuyerY += 3.4;
+  }
+
+  pdf.setFont(docFont, 'normal');
+  pdf.setFontSize(6.4);
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  for (const line of buyerAddrLines) {
+    pdf.text(line, rightCardX + 2.5, curBuyerY);
+    curBuyerY += 3.0;
+  }
+
+  if (t.buyerCity) {
+    pdf.text(t.buyerCity, rightCardX + 2.5, curBuyerY);
+    curBuyerY += 3.0;
+  }
+
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text('GSTIN: ', rightCardX + 2.5, curBuyerY);
+  pdf.setFont(docFont, 'normal');
+  pdf.text(t.buyerGstin, rightCardX + 11.5, curBuyerY);
+  curBuyerY += 3.0;
+
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  pdf.text('Place of Supply: ', rightCardX + 2.5, curBuyerY);
+  pdf.setFont(docFont, 'normal');
+  pdf.text(t.buyerPlaceOfSupply, rightCardX + 22, curBuyerY);
+
+  y += row1H + 2.5;
+
+  // ==========================================
+  // 5. ROW 2: CONSIGNEE (SHIPPED TO) & TRANSPORT / LOGISTICS
+  // ==========================================
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(7.5);
+  const shipTitleLines = pdf.splitTextToSize(t.shipToTitle, cardW - 6);
+
+  pdf.setFont(docFont, 'normal');
+  pdf.setFontSize(6.4);
+  const shipAddrLines = pdf.splitTextToSize(t.shipToAddr, cardW - 6);
+
+  const shipNeededH = 7.5 + (shipTitleLines.length * 3.4) + (shipAddrLines.length * 3.0) + 3.0 + 3.0 + 3.0 + 3;
+  const transportNeededH = 7.5 + (4 * 4.2) + 3;
+  const row2H = Math.max(shipNeededH, transportNeededH, 29);
+
+  if (layout === 'classic') {
+    pdf.setFillColor(255, 255, 255);
+    pdf.setDrawColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+    pdf.setLineWidth(0.4);
+    pdf.rect(margin, y, cardW, row2H, 'FD');
+    pdf.rect(rightCardX, y, cardW, row2H, 'FD');
+
+    // Header bars
+    pdf.setFillColor(colors.bgHeader.rgb[0], colors.bgHeader.rgb[1], colors.bgHeader.rgb[2]);
+    pdf.rect(margin, y, cardW, 5, 'FD');
+    pdf.rect(rightCardX, y, cardW, 5, 'FD');
+  } else if (layout === 'minimalist') {
+    pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+    pdf.setLineWidth(0.2);
+    pdf.line(margin, y + 5, margin + cardW, y + 5);
+    pdf.line(rightCardX, y + 5, rightCardX + cardW, y + 5);
+  } else {
+    // Modern executive cards
+    pdf.setFillColor(255, 255, 255);
+    pdf.setDrawColor(colors.borderStandard.rgb[0], colors.borderStandard.rgb[1], colors.borderStandard.rgb[2]);
+    pdf.setLineWidth(0.3);
+    pdf.roundedRect(margin, y, cardW, row2H, 1.2, 1.2, 'FD');
+    pdf.roundedRect(rightCardX, y, cardW, row2H, 1.2, 1.2, 'FD');
+
+    // Header bars
+    pdf.setFillColor(colors.bgLight.rgb[0], colors.bgLight.rgb[1], colors.bgLight.rgb[2]);
+    pdf.rect(margin, y, cardW, 5, 'F');
+    pdf.rect(rightCardX, y, cardW, 5, 'F');
+    pdf.setDrawColor(colors.borderSubtle.rgb[0], colors.borderSubtle.rgb[1], colors.borderSubtle.rgb[2]);
+    pdf.line(margin, y + 5, margin + cardW, y + 5);
+    pdf.line(rightCardX, y + 5, rightCardX + cardW, y + 5);
+  }
+
+  // Row 2 - Left Card (Consignee / Shipped To - Large box)
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(6.4);
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  pdf.text(t.config.shipToCardTitle, margin + 2.5, y + 3.5);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(`STATE: ${t.shipToState.code}`, margin + cardW - 2.5, y + 3.5, { align: 'right' });
+
+  let curShipY = y + 8.2;
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(7.5);
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  for (const line of shipTitleLines) {
+    pdf.text(line, margin + 2.5, curShipY);
+    curShipY += 3.4;
+  }
+
+  pdf.setFont(docFont, 'normal');
+  pdf.setFontSize(6.4);
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  for (const line of shipAddrLines) {
+    pdf.text(line, margin + 2.5, curShipY);
+    curShipY += 3.0;
+  }
+
+  if (t.shipToCity) {
+    pdf.text(t.shipToCity, margin + 2.5, curShipY);
+    curShipY += 3.0;
+  }
+
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text('GSTIN: ', margin + 2.5, curShipY);
+  pdf.setFont(docFont, 'normal');
+  pdf.text(t.shipToGstin, margin + 11.5, curShipY);
+  curShipY += 3.0;
+
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  pdf.text('Delivery State: ', margin + 2.5, curShipY);
+  pdf.setFont(docFont, 'normal');
+  pdf.text(t.shipToPlaceOfSupply, margin + 20, curShipY);
+
+  // Row 2 - Right Card (Dispatch & Transport Logistics)
+  pdf.setFont(docFont, 'bold');
+  pdf.setFontSize(6.4);
+  pdf.setTextColor(colors.textSecondary.rgb[0], colors.textSecondary.rgb[1], colors.textSecondary.rgb[2]);
+  pdf.text(t.config.transportCardTitle, rightCardX + 2.5, y + 3.5);
   pdf.setFont(docFont, 'normal');
   pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
-  pdf.text('Transporter: ', margin + transItemW + 2.5, y + 4.1);
+  pdf.text(`PURPOSE: ${t.config.defaultPurpose}`, rightCardX + cardW - 2.5, y + 3.5, { align: 'right' });
+
+  let curTransY = y + 8.8;
+
+  // Trans Line 1: Transport Mode & Vehicle
+  pdf.setFont(docFont, 'normal');
+  pdf.setFontSize(6.4);
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text('Transport Mode: ', rightCardX + 2.5, curTransY);
   pdf.setFont(docFont, 'bold');
   pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
-  pdf.text(t.transporterName, margin + transItemW + 16, y + 4.1);
+  pdf.text(t.transportMode, rightCardX + 22, curTransY);
 
-  // Item 3: LR/GR No & Date
   pdf.setFont(docFont, 'normal');
   pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
-  pdf.text('LR/GR No & Date: ', margin + transItemW * 2 + 2.5, y + 4.1);
+  pdf.text('Vehicle: ', rightCardX + 48, curTransY);
   pdf.setFont(docFont, 'bold');
   pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
-  pdf.text(t.lrGrText, margin + transItemW * 2 + 23, y + 4.1);
+  pdf.text(doc.challanDetails?.vehicleNo || 'N/A', rightCardX + 59, curTransY);
+  curTransY += 4.2;
 
-  // Item 4: Driver / Contact
+  // Trans Line 2: Transporter / Note
   pdf.setFont(docFont, 'normal');
   pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
-  pdf.text('Driver / Contact: ', margin + transItemW * 3 + 2.5, y + 4.1);
+  pdf.text('Transporter: ', rightCardX + 2.5, curTransY);
   pdf.setFont(docFont, 'bold');
   pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
-  pdf.text(t.driverText, margin + transItemW * 3 + 21, y + 4.1);
+  pdf.text(pdf.splitTextToSize(t.transporterName, cardW - 22)[0], rightCardX + 19, curTransY);
+  curTransY += 4.2;
 
-  y += transH + 2.5;
+  // Trans Line 3: LR/GR No & Date
+  pdf.setFont(docFont, 'normal');
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text('LR/GR Tracking: ', rightCardX + 2.5, curTransY);
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(pdf.splitTextToSize(t.lrGrText, cardW - 25)[0], rightCardX + 23, curTransY);
+  curTransY += 4.2;
+
+  // Trans Line 4: Date & Handling
+  pdf.setFont(docFont, 'normal');
+  pdf.setTextColor(colors.textMuted.rgb[0], colors.textMuted.rgb[1], colors.textMuted.rgb[2]);
+  pdf.text('Handling / Ref: ', rightCardX + 2.5, curTransY);
+  pdf.setFont(docFont, 'bold');
+  pdf.setTextColor(colors.textMain.rgb[0], colors.textMain.rgb[1], colors.textMain.rgb[2]);
+  pdf.text(pdf.splitTextToSize(t.driverText, cardW - 24)[0], rightCardX + 21, curTransY);
+
+  y += row2H + 2.5;
 
   // ==========================================
   // 6. LINE ITEMS TABLE (FROM SHARED BASE COLUMNS)

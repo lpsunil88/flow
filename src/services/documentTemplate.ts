@@ -241,6 +241,8 @@ export interface DocumentTypeConfig {
   col4Label: string;
   sellerCardTitle: string;
   buyerCardTitle: string;
+  shipToCardTitle: string;
+  transportCardTitle: string;
   footerNotice: string;
 }
 
@@ -264,7 +266,9 @@ export function getDocumentTypeConfig(
       col3Label: 'E-WAY BILL NO:',
       col4Label: 'VEHICLE NUMBER:',
       sellerCardTitle: 'CONSIGNOR (DISPATCH LOCATION)',
-      buyerCardTitle: 'CONSIGNEE (RECIPIENT)',
+      buyerCardTitle: 'BILLED TO (BUYER / CLIENT)',
+      shipToCardTitle: 'CONSIGNEE (DELIVERY LOCATION)',
+      transportCardTitle: 'CHALLAN TRANSPORT & MOVEMENT',
       footerNotice:
         'This is a computer-generated delivery challan issued for corporate merchandising operations. Standard A4 format.',
     };
@@ -286,6 +290,8 @@ export function getDocumentTypeConfig(
       col4Label: 'REF / ORDER NO:',
       sellerCardTitle: 'SUPPLIER (DISPATCH LOCATION)',
       buyerCardTitle: 'PROSPECTIVE BUYER (BILLED TO)',
+      shipToCardTitle: 'SHIP TO (DELIVERY DESTINATION)',
+      transportCardTitle: 'DISPATCH & FREIGHT DETAILS',
       footerNotice:
         'This is a computer-generated proforma invoice issued for corporate merchandising operations. Standard A4 format.',
     };
@@ -307,6 +313,8 @@ export function getDocumentTypeConfig(
     col4Label: 'VEHICLE / REF:',
     sellerCardTitle: 'SELLER (DISPATCH LOCATION)',
     buyerCardTitle: 'BUYER (BILLED TO)',
+    shipToCardTitle: 'CONSIGNEE (SHIPPED TO)',
+    transportCardTitle: 'DISPATCH & TRANSPORT LOGISTICS',
     footerNotice:
       'This is a computer-generated tax invoice issued for corporate operations. Standard A4 format.',
   };
@@ -321,6 +329,8 @@ export interface ResolvedDocumentData {
   config: DocumentTypeConfig;
   consignorState: { name: string; code: string };
   consigneeState: { name: string; code: string };
+  billedToState: { name: string; code: string };
+  shipToState: { name: string; code: string };
   monogram: string;
   formattedDateTime: string;
   totalQuantity: number;
@@ -343,6 +353,16 @@ export interface ResolvedDocumentData {
   buyerAddr: string;
   buyerCity: string;
   buyerGstin: string;
+  buyerContact: string;
+  buyerPlaceOfSupply: string;
+  shipToTitle: string;
+  shipToAddr: string;
+  shipToCity: string;
+  shipToGstin: string;
+  shipToContact: string;
+  shipToPlaceOfSupply: string;
+  shipToBadge: string;
+  hasDistinctShipTo: boolean;
   tableColumns: DocumentTableColumn[];
   transportMode: string;
   transporterName: string;
@@ -368,17 +388,27 @@ export function resolveDocumentTemplateData(
     overrides?.layoutTemplate || doc.templateStyle || company.documentTemplate || 'modern';
   const config = getDocumentTypeConfig(doc, company, overrides);
 
+  // 1. Consignor / Seller State
   const consignorState = getStateDisplay(
-    doc.dispatchAddress?.state || company.city,
+    doc.dispatchAddress?.state || company.state || company.city,
     doc.dispatchAddress?.taxId || company.taxId,
     doc.dispatchAddress?.stateCode
   );
 
-  const consigneeState = getStateDisplay(
-    doc.shippingAddress?.state || doc.clientAddress,
+  // 2. Buyer / Billed To Party State
+  const billedToState = getStateDisplay(
+    doc.clientAddress,
+    doc.clientTaxId
+  );
+
+  // 3. Consignee / Shipped To Party State
+  const shipToState = getStateDisplay(
+    doc.shippingAddress?.state || doc.shippingAddress?.address || doc.clientAddress,
     doc.shippingAddress?.taxId || doc.clientTaxId,
     doc.shippingAddress?.stateCode
   );
+
+  const consigneeState = billedToState;
 
   const monogram =
     company.name
@@ -414,25 +444,53 @@ export function resolveDocumentTemplateData(
       ? company.taxId.substring(2, 12)
       : 'AAGCS6232B';
 
+  // Seller (Dispatch Location) Data
   const sellerTitle = doc.dispatchAddress?.name || company.name || 'Sutraa Creations Private Limited';
   const sellerAddr = doc.dispatchAddress?.address || company.address || 'D-39 Sector 2 Noida Uttar Pradesh';
-  const sellerCity = `${doc.dispatchAddress?.city || company.city || 'Noida'} - ${doc.dispatchAddress?.pincode || '201301'}, ${consignorState.name}`;
+  const sellerCity = `${doc.dispatchAddress?.city || company.city || 'Noida'}${
+    doc.dispatchAddress?.pincode || company.pincode ? ' - ' + (doc.dispatchAddress?.pincode || company.pincode) : ''
+  }, ${consignorState.name}`;
   const sellerGstin = doc.dispatchAddress?.taxId || company.taxId || '27AAGCS6232B1ZM';
   const sellerContact = doc.dispatchAddress?.phone
-    ? `${doc.dispatchAddress.name || 'Dispatch Manager'} (${doc.dispatchAddress.phone})`
-    : `Sunil Kumar (${company.phone || '7840069490'})`;
+    ? `${doc.dispatchAddress.name || 'Dispatch Unit'} (${doc.dispatchAddress.phone})`
+    : `${signatoryName} (${company.phone || '7840069490'})`;
 
-  const buyerTitle = doc.shippingAddress?.company || doc.clientCompany || doc.clientName || 'Sutraa Creations Private Limited';
-  const buyerAddr = doc.shippingAddress?.address || doc.clientAddress || 'B-4, Ashok Guruprasad CHS Ltd, Hanuman Road, Vile Parle (E)';
-  const buyerCity = `${doc.shippingAddress?.city || 'Mumbai'} - ${doc.shippingAddress?.pincode || '400057'}, ${consigneeState.name}`;
-  const buyerGstin = doc.shippingAddress?.taxId || doc.clientTaxId || '27AAGCS6232B1ZM';
+  // Buyer (Billed To) Data
+  const buyerTitle = doc.clientCompany || doc.clientName || 'Sutraa Creations Private Limited';
+  const buyerAddr = doc.clientAddress || 'B-4, Ashok Guruprasad CHS Ltd, Hanuman Road, Vile Parle (E)';
+  const buyerCity = billedToState.name ? `State: ${billedToState.name}` : '';
+  const buyerGstin = doc.clientTaxId || '27AAGCS6232B1ZM';
+  const buyerContact = doc.clientName && doc.clientCompany && doc.clientCompany !== doc.clientName
+    ? `${doc.clientName}${doc.clientPhone ? ' (' + doc.clientPhone + ')' : ''}`
+    : doc.clientPhone ? `Ph: ${doc.clientPhone}` : '';
+  const buyerPlaceOfSupply = `${billedToState.code}-${billedToState.name}`;
+
+  // Consignee (Shipped To) Data
+  const hasDistinctShipTo = Boolean(
+    doc.shippingAddress?.enabled ||
+    (doc.shippingAddress?.address && doc.shippingAddress.address.trim() !== '' && doc.shippingAddress.address.trim() !== doc.clientAddress?.trim()) ||
+    (doc.shippingAddress?.company && doc.shippingAddress.company.trim() !== '' && doc.shippingAddress.company.trim() !== doc.clientCompany?.trim()) ||
+    (doc.shippingAddress?.name && doc.shippingAddress.name.trim() !== '' && doc.shippingAddress.name.trim() !== doc.clientName?.trim())
+  );
+
+  const shipToTitle = doc.shippingAddress?.company || doc.shippingAddress?.name || doc.clientCompany || doc.clientName || 'Sutraa Creations Private Limited';
+  const shipToAddr = doc.shippingAddress?.address || doc.clientAddress || 'B-4, Ashok Guruprasad CHS Ltd, Hanuman Road, Vile Parle (E)';
+  const shipToCity = doc.shippingAddress?.city
+    ? `${doc.shippingAddress.city}${doc.shippingAddress.pincode ? ' - ' + doc.shippingAddress.pincode : ''}, ${shipToState.name}`
+    : (shipToState.name ? `State: ${shipToState.name}` : '');
+  const shipToGstin = doc.shippingAddress?.taxId || doc.clientTaxId || '27AAGCS6232B1ZM';
+  const shipToContact = doc.shippingAddress?.phone
+    ? `${doc.shippingAddress.name ? doc.shippingAddress.name + ' ' : ''}(${doc.shippingAddress.phone})`.trim()
+    : doc.clientPhone ? `${doc.clientName ? doc.clientName + ' ' : ''}(${doc.clientPhone})`.trim() : '';
+  const shipToPlaceOfSupply = `${shipToState.code}-${shipToState.name}`;
+  const shipToBadge = hasDistinctShipTo ? 'Distinct Delivery Location' : 'Delivery Location (Same as Billed)';
 
   const tableColumns = getDocumentTableColumns(isInterState, doc.type);
 
   const transportMode = doc.challanDetails?.dispatchThrough || 'Road';
   const transporterName = doc.challanDetails?.deliveryNote || '-';
   const lrGrText = doc.challanDetails?.lrNo || doc.challanDetails?.receivedBy || '-';
-  const driverText = doc.challanDetails?.driverName || 'Direct Delivery';
+  const driverText = doc.challanDetails?.driverName || doc.challanDetails?.vehicleNo ? `Vehicle: ${doc.challanDetails?.vehicleNo}` : 'Direct Delivery';
 
   const remarksText =
     doc.challanDetails?.remarks ||
@@ -443,6 +501,8 @@ export function resolveDocumentTemplateData(
     config,
     consignorState,
     consigneeState,
+    billedToState,
+    shipToState,
     monogram,
     formattedDateTime,
     totalQuantity,
@@ -465,6 +525,16 @@ export function resolveDocumentTemplateData(
     buyerAddr,
     buyerCity,
     buyerGstin,
+    buyerContact,
+    buyerPlaceOfSupply,
+    shipToTitle,
+    shipToAddr,
+    shipToCity,
+    shipToGstin,
+    shipToContact,
+    shipToPlaceOfSupply,
+    shipToBadge,
+    hasDistinctShipTo,
     tableColumns,
     transportMode,
     transporterName,

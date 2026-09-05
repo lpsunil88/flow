@@ -147,26 +147,47 @@ export function getStateCodeFromGstin(gstin?: string): string | null {
 }
 
 export function getStateDisplay(stateName?: string, gstin?: string, stateCode?: string): { code: string; name: string } {
+  const isCleanStateName = (str?: string): boolean => {
+    if (!str) return false;
+    const trimmed = str.trim();
+    if (trimmed.length > 30 || trimmed.includes('\n') || trimmed.includes(',')) return false;
+    const lower = trimmed.toLowerCase();
+    return !lower.includes('road') && !lower.includes('house') && !lower.includes('street') && !lower.includes('gali') && !lower.includes('nagar');
+  };
+
   // If stateCode is provided
   if (stateCode && GST_STATE_MAP[stateCode]) {
-    return { code: stateCode, name: stateName || GST_STATE_MAP[stateCode] };
+    return {
+      code: stateCode,
+      name: isCleanStateName(stateName) ? stateName!.trim() : GST_STATE_MAP[stateCode]
+    };
   }
 
-  // From GSTIN
+  // From GSTIN (first 2 digits)
   const gstinCode = getStateCodeFromGstin(gstin);
   if (gstinCode && GST_STATE_MAP[gstinCode]) {
-    return { code: gstinCode, name: stateName || GST_STATE_MAP[gstinCode] };
+    return {
+      code: gstinCode,
+      name: isCleanStateName(stateName) ? stateName!.trim() : GST_STATE_MAP[gstinCode]
+    };
   }
 
   // From stateName search
   if (stateName) {
     const cleanName = stateName.toLowerCase().trim();
     for (const [code, name] of Object.entries(GST_STATE_MAP)) {
-      if (name.toLowerCase() === cleanName || cleanName.includes(name.toLowerCase())) {
+      const lowerMapName = name.toLowerCase();
+      // Match exact or as word boundary inside address text
+      const wordRegex = new RegExp(`\\b${lowerMapName}\\b`, 'i');
+      if (lowerMapName === cleanName || wordRegex.test(cleanName)) {
         return { code, name };
       }
     }
   }
 
-  return { code: stateCode || (gstinCode || '27'), name: stateName || 'Maharashtra' };
+  const defaultCode = stateCode || gstinCode || '27';
+  return {
+    code: defaultCode,
+    name: GST_STATE_MAP[defaultCode] || 'Maharashtra'
+  };
 }
