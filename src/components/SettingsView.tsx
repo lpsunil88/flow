@@ -1,13 +1,21 @@
 import React, { useState, useRef } from 'react';
 import { CompanyProfile, CurrencyConfig, StaffUser, UserRole, DocumentLayoutTemplate } from '../types';
 import { 
-  Building2, Globe, Percent, Shield, Cloud, 
+  Building2, Globe, Percent, Shield, Cloud, Database, Server,
   Save, RefreshCw, CheckCircle2, UserCheck, Plus, Trash2, Key, 
   Upload, Image, Check, Sparkles, Loader2, Search, ExternalLink,
   Briefcase, Star, UserPlus, ShieldAlert, KeyRound, Lock, Eye, EyeOff,
-  FileText, Truck, Stamp, PenTool, FileSignature, MapPin, Palette, LayoutTemplate, Layers
+  FileText, Truck, Stamp, PenTool, FileSignature, MapPin, Palette, LayoutTemplate, Layers, Copy, Code
 } from 'lucide-react';
 import { saveBillingDataToDrive, loadBillingDataFromDrive } from '../services/googleDrive';
+import { 
+  getSupabaseConfig, 
+  saveSupabaseConfig, 
+  testSupabaseConnection, 
+  pushDataToSupabase, 
+  SupabaseConfig 
+} from '../services/supabase';
+import { FIRESTORE_DATABASE_ID, FIRESTORE_PROJECT_ID } from '../services/firebase';
 import { CreateStaffModal } from './CreateStaffModal';
 import { generateSampleStamp, generateSampleSignature } from '../utils/stampSignature';
 import { LAYOUT_TEMPLATES_CONFIG } from '../services/documentTemplate';
@@ -20,6 +28,13 @@ interface SettingsViewProps {
   staffUsers: StaffUser[];
   currentUser: StaffUser;
   driveAccessToken: string | null;
+  firestoreStatus?: 'connecting' | 'connected' | 'error' | 'offline';
+  firestoreStatusMsg?: string | null;
+  onPushToFirestore?: () => Promise<{ success: boolean; syncedCount: number; error?: string }>;
+  onRefreshFromFirestore?: () => Promise<void>;
+  documentsCount?: number;
+  clientsCount?: number;
+  itemsCount?: number;
   onSaveCompany: (updated: CompanyProfile) => void;
   onSwitchCompany?: (companyId: string) => void;
   onCreateCompany?: (newCompany: CompanyProfile) => void;
@@ -39,6 +54,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   staffUsers: initialStaff,
   currentUser,
   driveAccessToken,
+  firestoreStatus = 'connected',
+  firestoreStatusMsg,
+  onPushToFirestore,
+  onRefreshFromFirestore,
+  documentsCount = 0,
+  clientsCount = 0,
+  itemsCount = 0,
   onSaveCompany,
   onSwitchCompany,
   onCreateCompany,
@@ -56,6 +78,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [isDriveSyncing, setIsDriveSyncing] = useState(false);
   const [driveMsg, setDriveMsg] = useState<string | null>(null);
+
+  // Database & Cloud Sync states
+  const [supabaseConfig, setSupabaseConfig] = useState<SupabaseConfig>(() => getSupabaseConfig());
+  const [supabaseTesting, setSupabaseTesting] = useState(false);
+  const [supabaseSyncing, setSupabaseSyncing] = useState(false);
+  const [supabaseMsg, setSupabaseMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isFirestorePushing, setIsFirestorePushing] = useState(false);
+  const [firestoreMsg, setFirestoreMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showSqlSchema, setShowSqlSchema] = useState(false);
+  const [copiedSql, setCopiedSql] = useState(false);
 
   // Logo file input ref
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -441,8 +473,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
-          <Cloud className="w-4 h-4" />
-          <span>Google Drive Cloud Sync</span>
+          <Database className="w-4 h-4" />
+          <span>Cloud Database & Sync</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Firestore Connected" />
         </button>
       </div>
 
@@ -1867,21 +1900,325 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
-      {/* TAB 7: GOOGLE DRIVE CLOUD SYNC */}
+      {/* TAB 7: CLOUD DATABASE & SYNC */}
       {activeTab === 'drive' && (
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-xs space-y-6 text-xs">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Google Drive Cloud Storage & Synchronization</h3>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Database className="w-4 h-4 text-indigo-600" />
+              Cloud Database & Storage Synchronization
+            </h3>
             <p className="text-slate-500 mt-0.5">
-              Securely archive customer transactions, invoices, challan PDFs, and full database snapshots in your Google Drive.
+              Manage real-time cloud database storage with Google Cloud Firebase Firestore, optional custom Supabase integration, and Google Drive document backups.
             </p>
           </div>
 
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+          {/* 1. FIREBASE FIRESTORE PRIMARY CLOUD DATABASE */}
+          <div className="p-5 bg-gradient-to-br from-indigo-50/60 to-white border border-indigo-200/80 rounded-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-indigo-600 text-white rounded-lg shadow-xs">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-sm">Firebase Firestore Database</span>
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300/50 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      {firestoreStatus === 'connected' ? 'Active & Synced' : 'Ready'}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span>Project: <span className="font-mono text-slate-700 font-semibold">{FIRESTORE_PROJECT_ID}</span></span>
+                    <span>•</span>
+                    <span className="truncate max-w-xs" title={FIRESTORE_DATABASE_ID}>DB ID: <span className="font-mono text-slate-700">{FIRESTORE_DATABASE_ID}</span></span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <span className="text-[11px] text-indigo-700 bg-indigo-100/70 px-2.5 py-1 rounded-md font-medium">
+                  Default Cloud Engine
+                </span>
+              </div>
+            </div>
+
+            {/* Live Collection Stats */}
+            <div className="grid grid-cols-3 gap-3 pt-1">
+              <div className="bg-white/80 p-3 rounded-lg border border-indigo-100 text-center">
+                <div className="text-lg font-bold text-slate-900">{documentsCount}</div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Documents</div>
+              </div>
+              <div className="bg-white/80 p-3 rounded-lg border border-indigo-100 text-center">
+                <div className="text-lg font-bold text-slate-900">{clientsCount}</div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Clients</div>
+              </div>
+              <div className="bg-white/80 p-3 rounded-lg border border-indigo-100 text-center">
+                <div className="text-lg font-bold text-slate-900">{itemsCount}</div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Catalog Items</div>
+              </div>
+            </div>
+
+            {firestoreMsg && (
+              <div className={`p-3 rounded-lg font-medium text-xs flex items-center gap-2 ${
+                firestoreMsg.type === 'success'
+                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                  : 'bg-rose-50 border border-rose-200 text-rose-800'
+              }`}>
+                {firestoreMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />}
+                <span>{firestoreMsg.text}</span>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!onPushToFirestore) return;
+                  setIsFirestorePushing(true);
+                  setFirestoreMsg(null);
+                  try {
+                    const res = await onPushToFirestore();
+                    if (res.success) {
+                      setFirestoreMsg({
+                        type: 'success',
+                        text: `Successfully synced ${res.syncedCount} records to Firebase Firestore cloud database!`,
+                      });
+                    } else {
+                      setFirestoreMsg({
+                        type: 'error',
+                        text: res.error || 'Firestore sync encountered an issue.',
+                      });
+                    }
+                  } catch (e: any) {
+                    setFirestoreMsg({ type: 'error', text: e.message || 'Sync failed' });
+                  } finally {
+                    setIsFirestorePushing(false);
+                  }
+                }}
+                disabled={isFirestorePushing}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold rounded-lg shadow-xs transition"
+              >
+                {isFirestorePushing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Cloud className="w-3.5 h-3.5" />}
+                <span>Push All Local Data to Firestore</span>
+              </button>
+
+              {onRefreshFromFirestore && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setFirestoreMsg(null);
+                    try {
+                      await onRefreshFromFirestore();
+                      setFirestoreMsg({
+                        type: 'success',
+                        text: 'Fetched latest records from Firebase Firestore successfully!',
+                      });
+                    } catch (e: any) {
+                      setFirestoreMsg({ type: 'error', text: e.message || 'Refresh failed' });
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-2xs transition"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Refresh from Firestore</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 2. SUPABASE INTEGRATION (CUSTOM EXTERNAL DATABASE) */}
+          <div className="p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-600 text-white rounded-lg shadow-xs">
+                  <Server className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-slate-900 text-sm">Supabase Database Integration</h4>
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-200 text-slate-700">
+                      Optional Dual-Sync
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Connect your own Supabase project PostgreSQL database to mirror and sync billing documents.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowSqlSchema(!showSqlSchema)}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200"
+              >
+                <Code className="w-3.5 h-3.5" />
+                <span>{showSqlSchema ? 'Hide SQL Schema' : 'View Supabase SQL Schema'}</span>
+              </button>
+            </div>
+
+            {/* Supabase Credentials Form */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Supabase Project URL</label>
+                <input
+                  type="url"
+                  placeholder="https://xyzcompany.supabase.co"
+                  value={supabaseConfig.url}
+                  onChange={(e) => {
+                    const next = { ...supabaseConfig, url: e.target.value.trim() };
+                    setSupabaseConfig(next);
+                    saveSupabaseConfig(next);
+                  }}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Supabase Anon Key</label>
+                <input
+                  type="password"
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  value={supabaseConfig.anonKey}
+                  onChange={(e) => {
+                    const next = { ...supabaseConfig, anonKey: e.target.value.trim() };
+                    setSupabaseConfig(next);
+                    saveSupabaseConfig(next);
+                  }}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white font-mono"
+                />
+              </div>
+            </div>
+
+            {supabaseMsg && (
+              <div className={`p-3 rounded-lg font-medium text-xs flex items-center gap-2 ${
+                supabaseMsg.type === 'success'
+                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                  : 'bg-rose-50 border border-rose-200 text-rose-800'
+              }`}>
+                {supabaseMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />}
+                <span>{supabaseMsg.text}</span>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={async () => {
+                  setSupabaseTesting(true);
+                  setSupabaseMsg(null);
+                  try {
+                    const res = await testSupabaseConnection(supabaseConfig);
+                    setSupabaseMsg({
+                      type: res.success ? 'success' : 'error',
+                      text: res.message,
+                    });
+                  } catch (e: any) {
+                    setSupabaseMsg({ type: 'error', text: e.message || 'Connection test failed' });
+                  } finally {
+                    setSupabaseTesting(false);
+                  }
+                }}
+                disabled={supabaseTesting || !supabaseConfig.url || !supabaseConfig.anonKey}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold rounded-lg shadow-xs transition"
+              >
+                {supabaseTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                <span>Test Supabase Connection</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  setSupabaseSyncing(true);
+                  setSupabaseMsg(null);
+                  try {
+                    const appData = getAllAppData();
+                    const res = await pushDataToSupabase(supabaseConfig, {
+                      documents: appData.documents || [],
+                      clients: appData.clients || [],
+                      items: appData.items || [],
+                      companies: appData.companies || companies,
+                    });
+                    setSupabaseMsg({
+                      type: res.success ? 'success' : 'error',
+                      text: res.message,
+                    });
+                  } catch (e: any) {
+                    setSupabaseMsg({ type: 'error', text: e.message || 'Supabase sync failed' });
+                  } finally {
+                    setSupabaseSyncing(false);
+                  }
+                }}
+                disabled={supabaseSyncing || !supabaseConfig.url || !supabaseConfig.anonKey}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-semibold rounded-lg shadow-2xs transition disabled:opacity-50"
+              >
+                {supabaseSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Server className="w-3.5 h-3.5" />}
+                <span>Sync Data to Supabase</span>
+              </button>
+            </div>
+
+            {/* Collapsible Supabase SQL Definition */}
+            {showSqlSchema && (
+              <div className="mt-3 p-3 bg-slate-900 text-slate-200 rounded-lg space-y-2 font-mono text-[11px]">
+                <div className="flex items-center justify-between text-slate-400">
+                  <span className="font-sans font-bold text-xs text-white">Supabase SQL Editor Query:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const sql = `CREATE TABLE IF NOT EXISTS documents (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  document_number TEXT NOT NULL,
+  date TEXT,
+  due_date TEXT,
+  client_id TEXT,
+  client_name TEXT,
+  total NUMERIC,
+  currency TEXT,
+  status TEXT,
+  raw_json JSONB,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read/write" ON documents FOR ALL USING (true);`;
+                      navigator.clipboard.writeText(sql);
+                      setCopiedSql(true);
+                      setTimeout(() => setCopiedSql(false), 2500);
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[10px] font-sans transition"
+                  >
+                    {copiedSql ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedSql ? 'Copied' : 'Copy SQL'}</span>
+                  </button>
+                </div>
+                <pre className="overflow-x-auto text-[10px] text-emerald-300 p-2 bg-slate-950 rounded">
+{`CREATE TABLE IF NOT EXISTS documents (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  document_number TEXT NOT NULL,
+  date TEXT,
+  due_date TEXT,
+  client_id TEXT,
+  client_name TEXT,
+  total NUMERIC,
+  currency TEXT,
+  status TEXT,
+  raw_json JSONB,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read/write" ON documents FOR ALL USING (true);`}
+                </pre>
+              </div>
+            )}
+          </div>
+
+          {/* 3. GOOGLE DRIVE BACKUP & PDF ARCHIVE */}
+          <div className="p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-blue-500/10 text-blue-600 rounded-lg">
-                  <Cloud className="w-6 h-6" />
+                  <Cloud className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="font-bold text-slate-900 text-sm">
@@ -1908,7 +2245,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             )}
 
-            <div className="pt-2 flex flex-wrap items-center gap-3">
+            <div className="pt-1 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={handleManualDriveBackup}

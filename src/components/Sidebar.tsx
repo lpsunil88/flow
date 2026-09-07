@@ -5,7 +5,7 @@ import {
   Menu, X, Cloud, Check, ChevronDown, 
   Receipt, Boxes, Plus, Building2, LogOut,
   ChevronLeft, ChevronRight, Truck, FileSpreadsheet,
-  Layers, Shield
+  Layers, Shield, Database
 } from 'lucide-react';
 import { User as FirebaseUser } from 'firebase/auth';
 
@@ -22,6 +22,7 @@ interface SidebarProps {
   onOpenCreateCompany?: () => void;
   firebaseUser: FirebaseUser | null;
   driveAccessToken: string | null;
+  firestoreStatus?: 'connecting' | 'connected' | 'error' | 'offline';
   onGoogleSignIn: () => void;
   onGoogleSignOut: () => void;
   isAuthenticating: boolean;
@@ -45,6 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenCreateCompany,
   firebaseUser,
   driveAccessToken,
+  firestoreStatus = 'connected',
   onGoogleSignIn,
   onGoogleSignOut,
   isAuthenticating,
@@ -417,11 +419,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </nav>
           </div>
 
-          {/* Google Drive Integration Widget in Sidebar */}
+          {/* Google Drive & Cloud Database Widget in Sidebar */}
           <div className="px-3 py-2 mt-auto">
             {!isCollapsed ? (
-              <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-800 text-xs">
-                <div className="flex items-center justify-between mb-2">
+              <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-800 text-xs space-y-2.5">
+                {/* Firebase Cloud DB Status */}
+                <div className="flex items-center justify-between pb-2 border-b border-slate-700/60">
+                  <div className="flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="font-semibold text-slate-300 text-[10px]">Cloud Database</span>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                    firestoreStatus === 'connected'
+                      ? 'text-emerald-400 bg-emerald-950/60 border-emerald-500/30'
+                      : 'text-amber-400 bg-amber-950/60 border-amber-500/30'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      firestoreStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                    }`} />
+                    {firestoreStatus === 'connected' ? 'Firestore Live' : 'Connecting'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Cloud className="w-4 h-4 text-indigo-400" />
                     <span className="font-bold text-white text-[11px]">Google Drive</span>

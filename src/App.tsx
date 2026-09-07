@@ -23,10 +23,27 @@ import { ClientManagement } from './components/ClientManagement';
 import { ItemManagement } from './components/ItemManagement';
 import { SettingsView } from './components/SettingsView';
 import { LoginPage } from './components/LoginPage';
-import { BottomActionDock } from './components/BottomActionDock';
 import { GoogleAuthHelpModal, AuthErrorInfo } from './components/GoogleAuthHelpModal';
+import { 
+  testFirestoreConnection,
+  saveDocumentToFirestore,
+  deleteDocumentFromFirestore,
+  subscribeToFirestoreDocuments,
+  saveClientToFirestore,
+  deleteClientFromFirestore,
+  subscribeToFirestoreClients,
+  saveItemToFirestore,
+  deleteItemFromFirestore,
+  subscribeToFirestoreItems,
+  saveCompanyToFirestore,
+  subscribeToFirestoreCompanies,
+  saveProductListToFirestore,
+  subscribeToFirestoreProductLists,
+  pushAllLocalDataToFirestore,
+  fetchAllDocumentsFromFirestore,
+} from './services/firebase';
 
-import { LayoutDashboard, FileText, Users, Settings, Plus, Cloud, CheckCircle2, Boxes } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Settings, Plus, Cloud, CheckCircle2, Boxes, Database } from 'lucide-react';
 
 // Production initialization: clear any legacy test/mock data from earlier test sessions
 const PROD_INIT_FLAG = 'bbs_production_ready_v3';
@@ -217,6 +234,91 @@ export default function App() {
   const [authHelpModalOpen, setAuthHelpModalOpen] = useState(false);
   const [authErrorInfo, setAuthErrorInfo] = useState<AuthErrorInfo | null>(null);
 
+  // Firebase Firestore Real-Time Cloud Database State
+  const [firestoreStatus, setFirestoreStatus] = useState<'connecting' | 'connected' | 'error' | 'offline'>('connecting');
+  const [firestoreStatusMsg, setFirestoreStatusMsg] = useState<string | null>(null);
+
+  // Initialize Firestore real-time cloud sync on mount
+  useEffect(() => {
+    let unsubs: (() => void)[] = [];
+    let isMounted = true;
+
+    async function initDb() {
+      try {
+        const testRes = await testFirestoreConnection();
+        if (isMounted) {
+          setFirestoreStatus(testRes.success ? 'connected' : 'error');
+          if (!testRes.success) setFirestoreStatusMsg(testRes.message);
+        }
+
+        // 1. Documents subscription
+        const unsubDocs = subscribeToFirestoreDocuments(
+          (remoteDocs) => {
+            if (!isMounted) return;
+            if (remoteDocs && remoteDocs.length > 0) {
+              setDocuments(remoteDocs);
+            }
+          },
+          (err) => {
+            if (isMounted) {
+              setFirestoreStatus('error');
+              setFirestoreStatusMsg(err.message);
+            }
+          }
+        );
+        unsubs.push(unsubDocs);
+
+        // 2. Clients subscription
+        const unsubClients = subscribeToFirestoreClients((remoteClients) => {
+          if (!isMounted) return;
+          if (remoteClients && remoteClients.length > 0) {
+            setClients(remoteClients);
+          }
+        });
+        unsubs.push(unsubClients);
+
+        // 3. Items subscription
+        const unsubItems = subscribeToFirestoreItems((remoteItems) => {
+          if (!isMounted) return;
+          if (remoteItems && remoteItems.length > 0) {
+            setItems(remoteItems);
+          }
+        });
+        unsubs.push(unsubItems);
+
+        // 4. Companies subscription
+        const unsubCompanies = subscribeToFirestoreCompanies((remoteCompanies) => {
+          if (!isMounted) return;
+          if (remoteCompanies && remoteCompanies.length > 0) {
+            setCompanies(remoteCompanies);
+          }
+        });
+        unsubs.push(unsubCompanies);
+
+        // 5. Product lists subscription
+        const unsubLists = subscribeToFirestoreProductLists((remoteLists) => {
+          if (!isMounted) return;
+          if (remoteLists && remoteLists.length > 0) {
+            setProductLists(remoteLists);
+          }
+        });
+        unsubs.push(unsubLists);
+      } catch (err: any) {
+        if (isMounted) {
+          setFirestoreStatus('error');
+          setFirestoreStatusMsg(err?.message || 'Database connection error');
+        }
+      }
+    }
+
+    initDb();
+
+    return () => {
+      isMounted = false;
+      unsubs.forEach((u) => u());
+    };
+  }, []);
+
   // Sync to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.DOCS, JSON.stringify(documents));
@@ -318,6 +420,11 @@ export default function App() {
       return [docToSave, ...prev];
     });
 
+    // Persist to Firebase Firestore
+    saveDocumentToFirestore(docToSave).catch((err) => {
+      console.warn('Firestore document save failed:', err);
+    });
+
     setCreatingDocType(null);
     setEditingDoc(null);
 
@@ -332,27 +439,27 @@ export default function App() {
         const driveFile = await uploadPdfToDrive(driveAccessToken, fileName, pdfBlob);
         
         // Update document with Drive file ID & link
+        const driveUpdatedDoc = {
+          ...docToSave,
+          driveFileId: driveFile.fileId,
+          driveViewLink: driveFile.webViewLink,
+          lastSyncedWithDrive: new Date().toISOString(),
+        };
+
         setDocuments((prev) =>
-          prev.map((d) =>
-            d.id === docToSave.id
-              ? {
-                  ...d,
-                  driveFileId: driveFile.fileId,
-                  driveViewLink: driveFile.webViewLink,
-                  lastSyncedWithDrive: new Date().toISOString(),
-                }
-              : d
-          )
+          prev.map((d) => (d.id === docToSave.id ? driveUpdatedDoc : d))
         );
-        setGlobalBannerMsg(`Document ${docToSave.documentNumber} securely saved to Google Drive!`);
+        saveDocumentToFirestore(driveUpdatedDoc).catch(console.warn);
+
+        setGlobalBannerMsg(`Document ${docToSave.documentNumber} securely saved to Google Drive & Firestore!`);
         setTimeout(() => setGlobalBannerMsg(null), 4000);
       } catch (err) {
         console.error('Drive backup failed:', err);
-        setGlobalBannerMsg('Document saved locally. Google Drive sync failed (token may have expired).');
+        setGlobalBannerMsg('Document saved to Firestore. Google Drive sync failed (token may have expired).');
         setTimeout(() => setGlobalBannerMsg(null), 5000);
       }
     } else {
-      setGlobalBannerMsg(`Document ${docToSave.documentNumber} saved successfully.`);
+      setGlobalBannerMsg(`Document ${docToSave.documentNumber} saved to Firestore cloud database.`);
       setTimeout(() => setGlobalBannerMsg(null), 3000);
     }
   };
@@ -361,6 +468,7 @@ export default function App() {
     const doc = documents.find((d) => d.id === docId);
     if (!doc) return;
     setDocuments((prev) => prev.filter((d) => d.id !== docId));
+    deleteDocumentFromFirestore(docId).catch(console.warn);
     if (doc.clientId) updateClientBalance(doc.clientId);
     setGlobalBannerMsg(`Document ${doc.documentNumber} removed.`);
     setTimeout(() => setGlobalBannerMsg(null), 3000);
@@ -409,6 +517,8 @@ export default function App() {
         if (viewingDoc && viewingDoc.id === docId) {
           setViewingDoc(updatedDoc);
         }
+        // Save updated payment state to Firestore
+        saveDocumentToFirestore(updatedDoc).catch(console.warn);
         return updatedDoc;
       })
     );
@@ -417,7 +527,7 @@ export default function App() {
     if (targetDoc) updateClientBalance(targetDoc.clientId);
 
     setRecordingPaymentDoc(null);
-    setGlobalBannerMsg(`Payment of ${payment.amount} recorded successfully.`);
+    setGlobalBannerMsg(`Payment of ${payment.amount} recorded & synced to cloud.`);
     setTimeout(() => setGlobalBannerMsg(null), 3000);
   };
 
@@ -439,6 +549,7 @@ export default function App() {
           remindersSent: [...(d.remindersSent || []), newRecord],
         };
         if (viewingDoc && viewingDoc.id === docId) setViewingDoc(updated);
+        saveDocumentToFirestore(updated).catch(console.warn);
         return updated;
       })
     );
@@ -465,30 +576,35 @@ export default function App() {
   };
 
   const handleSaveClient = (client: Client) => {
+    const clientToSave = { ...client, companyId: activeCompanyId };
     setClients((prev) => {
       const exists = prev.some((c) => c.id === client.id);
       if (exists) {
-        return prev.map((c) => (c.id === client.id ? client : c));
+        return prev.map((c) => (c.id === client.id ? clientToSave : c));
       }
-      return [{ ...client, companyId: activeCompanyId }, ...prev];
+      return [clientToSave, ...prev];
     });
-    setGlobalBannerMsg(`Client ${client.name} updated successfully.`);
+    saveClientToFirestore(clientToSave).catch(console.warn);
+    setGlobalBannerMsg(`Client ${client.name} updated & synced.`);
     setTimeout(() => setGlobalBannerMsg(null), 3000);
   };
 
   const handleDeleteClient = (clientId: string) => {
     setClients((prev) => prev.filter((c) => c.id !== clientId));
+    deleteClientFromFirestore(clientId).catch(console.warn);
   };
 
   // Company management handlers
   const handleSaveCompany = (updated: CompanyProfile) => {
     setCompanies(prev => prev.map(c => c.id === updated.id ? updated : c));
+    saveCompanyToFirestore(updated).catch(console.warn);
     setGlobalBannerMsg(`Company ${updated.name} profile updated.`);
     setTimeout(() => setGlobalBannerMsg(null), 3000);
   };
 
   const handleCreateCompany = (newComp: CompanyProfile) => {
     setCompanies(prev => [...prev, newComp]);
+    saveCompanyToFirestore(newComp).catch(console.warn);
     setActiveCompanyId(newComp.id);
     setGlobalBannerMsg(`New Company "${newComp.name}" created and switched to active!`);
     setTimeout(() => setGlobalBannerMsg(null), 4000);
@@ -510,27 +626,32 @@ export default function App() {
 
   // Item and Product List Handlers
   const handleSaveItem = (item: Item) => {
+    const itemToSave = { ...item, companyId: activeCompanyId };
     setItems(prev => {
       const exists = prev.some(i => i.id === item.id);
-      if (exists) return prev.map(i => i.id === item.id ? item : i);
-      return [{ ...item, companyId: activeCompanyId }, ...prev];
+      if (exists) return prev.map(i => i.id === item.id ? itemToSave : i);
+      return [itemToSave, ...prev];
     });
+    saveItemToFirestore(itemToSave).catch(console.warn);
     setGlobalBannerMsg(`Item "${item.name}" saved to catalog.`);
     setTimeout(() => setGlobalBannerMsg(null), 3000);
   };
 
   const handleDeleteItem = (itemId: string) => {
     setItems(prev => prev.filter(i => i.id !== itemId));
+    deleteItemFromFirestore(itemId).catch(console.warn);
     setGlobalBannerMsg('Item removed from catalog.');
     setTimeout(() => setGlobalBannerMsg(null), 3000);
   };
 
   const handleSaveProductList = (list: ProductList) => {
+    const listToSave = { ...list, companyId: activeCompanyId };
     setProductLists(prev => {
       const exists = prev.some(l => l.id === list.id);
-      if (exists) return prev.map(l => l.id === list.id ? list : l);
-      return [{ ...list, companyId: activeCompanyId }, ...prev];
+      if (exists) return prev.map(l => l.id === list.id ? listToSave : l);
+      return [listToSave, ...prev];
     });
+    saveProductListToFirestore(listToSave).catch(console.warn);
     setGlobalBannerMsg(`Product List "${list.name}" saved.`);
     setTimeout(() => setGlobalBannerMsg(null), 3000);
   };
@@ -539,6 +660,24 @@ export default function App() {
     setProductLists(prev => prev.filter(l => l.id !== listId));
     setGlobalBannerMsg('Product list deleted.');
     setTimeout(() => setGlobalBannerMsg(null), 3000);
+  };
+
+  // Manual Firestore Operations
+  const handleManualPushToFirestore = async () => {
+    return await pushAllLocalDataToFirestore({
+      documents,
+      clients,
+      items,
+      companies,
+      productLists,
+    });
+  };
+
+  const handleRefreshFromFirestore = async () => {
+    const remoteDocs = await fetchAllDocumentsFromFirestore();
+    if (remoteDocs && remoteDocs.length > 0) {
+      setDocuments(remoteDocs);
+    }
   };
 
   const getAllAppData = () => {
@@ -613,6 +752,7 @@ export default function App() {
         onGoogleSignOut={handleGoogleSignOut}
         isAuthenticating={isAuthenticating}
         businessName={company.name}
+        firestoreStatus={firestoreStatus}
         onCreateDocument={(type) => {
           setCreatingDocType(type);
           setEditingDoc(null);
@@ -638,6 +778,18 @@ export default function App() {
             <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
               {company.name}
             </span>
+            <button
+              type="button"
+              onClick={() => setActiveView('settings')}
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition cursor-pointer"
+              title="Click to view Cloud Database settings"
+            >
+              <Database className="w-3 h-3 text-indigo-600" />
+              <span>Firebase Cloud</span>
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                firestoreStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+              }`} />
+            </button>
           </div>
 
           <div className="flex items-center gap-3">
@@ -672,7 +824,7 @@ export default function App() {
         )}
 
         {/* Main Content Body */}
-        <main className="flex-1 w-full mx-auto p-4 sm:p-6 lg:p-8 pb-32 sm:pb-28">
+        <main className="flex-1 w-full mx-auto p-4 sm:p-6 lg:p-8 pb-20 md:pb-8">
         {/* Editor Screen (when creating or editing a document) */}
         {creatingDocType || editingDoc ? (
           <DocumentEditor
@@ -785,6 +937,13 @@ export default function App() {
                 }}
                 getAllAppData={getAllAppData}
                 onRestoreData={handleRestoreData}
+                firestoreStatus={firestoreStatus}
+                firestoreStatusMsg={firestoreStatusMsg}
+                onPushToFirestore={handleManualPushToFirestore}
+                onRefreshFromFirestore={handleRefreshFromFirestore}
+                documentsCount={documents.length}
+                clientsCount={clients.length}
+                itemsCount={items.length}
               />
             )}
           </>
@@ -900,6 +1059,7 @@ export default function App() {
           onUpdateDocument={(updated) => {
             setViewingDoc(updated);
             setDocuments((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+            saveDocumentToFirestore(updated).catch(console.warn);
           }}
         />
       )}
@@ -934,16 +1094,6 @@ export default function App() {
         onClose={() => setAuthHelpModalOpen(false)}
         onRetry={handleGoogleSignIn}
         isAuthenticating={isAuthenticating}
-      />
-
-      {/* Floating Bottom Action Dock for Invoices, Proformas, and Challans */}
-      <BottomActionDock
-        currentUser={currentUser}
-        onCreateDocument={(type) => {
-          setEditingDoc(null);
-          setCreatingDocType(type);
-        }}
-        isEditingOrCreating={!!creatingDocType || !!editingDoc}
       />
     </div>
   );

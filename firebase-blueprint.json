@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FirebaseBlueprint",
+  "description": "Schema definition for Billing Suite Firestore database",
+  "entities": {
+    "Document": {
+      "title": "Document",
+      "description": "Invoice, Proforma Invoice, or Delivery Challan document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["invoice", "proforma", "challan"] },
+        "documentNumber": { "type": "string" },
+        "companyId": { "type": "string" },
+        "companyName": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "total": { "type": "number" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "type", "documentNumber"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Customer/Vendor details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "company": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "taxId": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Item": {
+      "title": "Item",
+      "description": "Inventory product or service line item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "sku": { "type": "string" },
+        "price": { "type": "number" },
+        "rate": { "type": "number" },
+        "unit": { "type": "string" },
+        "taxRate": { "type": "number" }
+      },
+      "required": ["id", "name"]
+    },
+    "Company": {
+      "title": "Company",
+      "description": "Organization and business entity settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "taxId": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    }
+  },
+  "firestore": {
+    "/documents/{documentId}": {
+      "schema": { "$ref": "#/entities/Document" },
+      "description": "Collection of invoices, proformas, and delivery challans"
+    },
+    "/clients/{clientId}": {
+      "schema": { "$ref": "#/entities/Client" },
+      "description": "Registered clients and customers"
+    },
+    "/items/{itemId}": {
+      "schema": { "$ref": "#/entities/Item" },
+      "description": "Product and service catalog"
+    },
+    "/companies/{companyId}": {
+      "schema": { "$ref": "#/entities/Company" },
+      "description": "Company profiles and configurations"
+    },
+    "/productLists/{listId}": {
+      "schema": { "type": "object" },
+      "description": "Pre-grouped product item lists"
+    },
+    "/currencies/{currencyId}": {
+      "schema": { "type": "object" },
+      "description": "Currency configuration"
+    },
+    "/staff/{staffId}": {
+      "schema": { "type": "object" },
+      "description": "Team members and roles"
+    }
+  }
+}
